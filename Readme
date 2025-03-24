@@ -1,0 +1,87 @@
+# ClientBedrock
+
+MinecraftBedrock版のユーティリティツール群です。Minecraftの管理や運用を効率化するための様々なツールを提供します。
+
+## 機能一覧
+
+### Minecraft関連ツール
+
+- **AutoSave**
+  - Minecraftワールドの自動バックアップツール
+  - 設定可能なバックアップ間隔とバックアップファイルの保持数
+  - GUIで進捗確認可能
+
+- **SetupTool** 
+  - TypeScript開発環境の自動セットアップツール
+  - Minecraft Script APIの開発環境を構築
+  - Node.jsの自動チェックと必要な依存関係のインストール
+
+- **WorldList**
+  - インストール済みのMinecraftワールド一覧表示
+  - 最終更新日でソート
+  - ワールドフォルダを直接開く機能
+
+
+
+### その他のユーティリティ
+
+- **Database**
+  - JSONベースの軽量データベース
+  - 非同期処理対応
+  - バージョン管理とコンフリクト解決機能
+
+- **Port**
+  - ポート公開・管理ツール
+  - Discord Webhook連携機能
+  - マルチプラットフォーム対応
+
+- **GenScript**
+  - 複数のexeファイルやbatファイルを管理・実行するスクリプト生成ツール
+  - Windows/Linux/macOS向けスクリプト生成対応
+
+- **Task**
+  - タスクスケジューラ
+  - 定期実行タスクの管理
+  - コマンドの自動実行
+
+## インストール方法
+
+各ツールは個別にインストール可能です。必要なツールのディレクトリに移動して以下のコマンドを実行してください:
+
+```bash
+npm install
+```
+
+## ビルド方法
+
+各ツールは以下のコマンドでビルドできます:
+
+```bash
+npm run auto  # 全プラットフォーム向けにビルド
+```
+
+または個別のプラットフォーム向けにビルド:
+
+```bash
+npm run windows-64  # Windows向け
+npm run linux      # Linux向け
+npm run macOS-64   # macOS向け
+```
+
+## 必要要件
+
+- Node.js
+- bun
+- TypeScript
+
+## ライセンス
+
+MIT License
+
+## 作者
+
+Koukunn_
+
+## 貢献
+
+Issue、PR歓迎です。

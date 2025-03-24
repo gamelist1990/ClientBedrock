@@ -6,13 +6,12 @@ import CliTable from 'cli-table3';
 import chalk from 'chalk';
 import { platform, arch } from 'process';
 
-
-
 const CONFIG_FILE = 'config.json';
 
 interface Config {
     discordWebhookUrl: string;
-
+    firstRun?: boolean;  // 初回起動フラグ (オプショナル)
+    noopen?: boolean; // ブラウザを開かないオプション (オプショナル)
 }
 
 interface ServerInfo {
@@ -34,7 +33,6 @@ const serverTable = new CliTable({
 const servers = new Map<string, ServerInfo>();
 let controlUrl: string | null = null;
 let secureShareNetProcess: ChildProcess | null = null;
-
 
 async function loadOrCreateConfig(): Promise<Config> {
     if (fs.existsSync(CONFIG_FILE)) {
@@ -63,6 +61,7 @@ async function loadOrCreateConfig(): Promise<Config> {
 
         const config: Config = {
             discordWebhookUrl: answers.webhookUrl,
+            firstRun: true, // 初回起動フラグを true に設定
         };
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
         return config;
@@ -183,7 +182,7 @@ async function showDownloadInstructions() {
 }
 
 
-function startSecureShareNet(config: Config) {
+async function startSecureShareNet(config: Config) {
     const executableName = getSecureShareNetExecutableName();
 
     if (!executableName || !fs.existsSync(executableName)) {
@@ -199,7 +198,9 @@ function startSecureShareNet(config: Config) {
         }
     }
 
-    secureShareNetProcess = spawn(`./${executableName}`, [], { stdio: 'pipe' });
+    const args = config.noopen ? ['noopen'] : []; // noopen が true なら 'noopen' 引数を追加
+    secureShareNetProcess = spawn(`./${executableName}`, args, { stdio: 'pipe' });
+
     if (!secureShareNetProcess.stdout || !secureShareNetProcess.stderr) {
         console.error(chalk.red('Failed to get stdout or stderr from process'));
         return;
@@ -212,7 +213,7 @@ function startSecureShareNet(config: Config) {
             const controlUrlMatch = output.match(/コントロールURL: (https:\/\/manage\.ssnetwork\.io\/h\/\?c=.+)/);
             if (controlUrlMatch) {
                 controlUrl = controlUrlMatch[1]; // 完全なURLを保存
-                updateTable(); // configを渡さない
+                updateTable();
             }
         }
 
@@ -241,7 +242,7 @@ function startSecureShareNet(config: Config) {
                     timestamp: new Date().toISOString(),
                 },
             ]);
-            updateTable(); // configを渡さない
+            updateTable();
         }
 
         const stopMatches = output.matchAll(/公開停止: サーバー公開を停止しました。 \(ポート: (\d+) \((TCPのみ|UDPのみ|TCP, UDP両方)\) ===> (.*)\)/g);
@@ -265,7 +266,7 @@ function startSecureShareNet(config: Config) {
                     },
                 ]);
             }
-            updateTable(); // configを渡さない
+            updateTable();
         }
     });
 
@@ -274,11 +275,6 @@ function startSecureShareNet(config: Config) {
     });
 
     secureShareNetProcess.on('close', async (code) => {
-
-        // URL転送機能を削除
-        // if (httpServer) {
-        //     httpServer.close();
-        // }
 
         if (code === 0) {
             console.log(chalk.greenBright(`securesharenet が正常終了しました (コード: ${code})`));
@@ -295,7 +291,23 @@ function startSecureShareNet(config: Config) {
 }
 
 async function main() {
-    const config = await loadOrCreateConfig();
+    let config = await loadOrCreateConfig();
+
+    // 初回起動時 かつ Windows の場合のみ質問する
+    if (config.firstRun && platform === 'win32') {
+        const answers = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'noopen',
+                message: 'ブラウザで管理画面を開かないようにしますか？',
+                default: false, // デフォルトでは開く
+            },
+        ]);
+        config.noopen = answers.noopen;
+        config.firstRun = false; // 初回起動フラグを false に更新
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8'); // 設定を保存
+    }
+
 
     process.on('SIGINT', async () => {
         console.log(chalk.yellow('\nCtrl+C が押されました。終了処理を行います...'));
@@ -305,7 +317,7 @@ async function main() {
         process.exit(0);
     });
 
-    startSecureShareNet(config);
+    startSecureShareNet(config); // 設定を渡す
 }
 
 main();

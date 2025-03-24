@@ -23,11 +23,15 @@ class TaskScheduler {
   public tasks: ScheduledTask[] = [];
   private filePath: string;
   public runningTasks: RunningTask[] = [];
+  private minecraftServerDir: string = "D:\\MinecraftServer"; // デフォルトのMinecraftサーバディレクトリ
+  private similarityThreshold: number = 0.4;       // デフォルトの類似度閾値
+
 
   constructor(filePath: string) {
     this.filePath = filePath;
     this.loadTasks();
   }
+
 
   private loadTasks(): void {
     try {
@@ -179,7 +183,6 @@ class TaskScheduler {
     console.log(table.toString());
   }
 
-
   private async executeCommand(commandString: string, taskName: string): Promise<void> {
     commandString = commandString.replace(/^"(.*)"$/, '$1');
     const [command, ...args] = commandString.split(" ");
@@ -198,7 +201,7 @@ class TaskScheduler {
         workingDir = dir;
       } else {
         const commandName = command.split('/').pop()?.split('\\').pop() || command;
-        const minecraftServerDir = "D:\\MinecraftServer";  //TODO: ハードコーディングを避ける
+        const minecraftServerDir = this.minecraftServerDir;
         const subdirs = fs.readdirSync(minecraftServerDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory())
           .map(dirent => dirent.name);
@@ -214,7 +217,7 @@ class TaskScheduler {
           }
         }
 
-        const threshold = 0.4; //TODO: ハードコーディングを避ける
+        const threshold = this.similarityThreshold;
         if (bestMatchScore > threshold) {
           workingDir = path.join(minecraftServerDir, bestMatchDir);
         } else {
@@ -271,7 +274,6 @@ class TaskScheduler {
     }
   }
 
-
   public async runTaskNow(taskName: string): Promise<void> {
     const task = this.tasks.find((t) => t.name === taskName);
     if (!task) {
@@ -285,7 +287,6 @@ class TaskScheduler {
     await Promise.all(task.commands.map(commandString => this.executeCommand(commandString, task.name)));
   }
 
-
   public async killExistingProcessesByTaskName(taskName: string): Promise<void> {
     const task = this.tasks.find(t => t.name === taskName);
     if (!task) {
@@ -296,7 +297,6 @@ class TaskScheduler {
       await this.killExistingProcess(command);
     }
   }
-
 
   private async killExistingProcess(fullCommand: string): Promise<void> {
     const commandName = fullCommand.split('/').pop()?.split('\\').pop() || fullCommand;
@@ -361,7 +361,8 @@ class TaskScheduler {
     return 1 - (dp[m][n] / maxLength);
   }
 
-  public run(): void {
+  // スケジューラ実行
+  public run(runImmediately: boolean = false): void {
     if (this.tasks.length === 0) {
       console.log('実行するスケジュールされたタスクはありません。');
       return;
@@ -369,7 +370,6 @@ class TaskScheduler {
 
     this.tasks.forEach(task => {
       const [hours, minutes] = task.time.split(':');
-
       const scheduleTask = async () => {
         console.log(`[${new Date().toLocaleString()}] タスク実行: ${task.name}`);
         await this.killExistingProcessesByTaskName(task.name);
@@ -379,6 +379,12 @@ class TaskScheduler {
       const now = new Date();
       const taskTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(hours, 10), parseInt(minutes, 10), 0);
       let delay = taskTime.getTime() - now.getTime();
+
+      if (runImmediately) {
+        console.log(`タスク "${task.name}" を即時実行します。`);
+        scheduleTask(); // 即時実行
+        runImmediately = false; // 以降は通常の遅延実行
+      }
 
       if (delay < 0) {
         delay += 24 * 60 * 60 * 1000;
@@ -400,8 +406,9 @@ async function main() {
 
   // コマンドライン引数の処理
   if (process.argv.includes('--run')) {
-    scheduler.run();
-    setupInputAndExit(scheduler); // 標準入力と終了処理をセットアップ
+    // --run が指定されたら、タスクを即時実行し、その後スケジュールに従って実行
+    scheduler.run(true);
+    setupInputAndExit(scheduler);
     return;
   }
 
@@ -418,10 +425,9 @@ async function main() {
     if (taskToRun && taskToRun !== 'タスクなし') {
       await scheduler.runTaskNow(taskToRun);
     }
-    setupInputAndExit(scheduler); // 標準入力と終了処理をセットアップ
+    setupInputAndExit(scheduler);
     return;
   }
-
 
   // 通常のメニュー表示
   await showMenu(scheduler);
