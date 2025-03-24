@@ -1,0 +1,9 @@
+[
+  {
+    "name": "server",
+    "time": "04:10",
+    "commands": [
+      "d:\\MinecraftServer\\xbox\\port_windows.exe"
+    ]
+  }
+]

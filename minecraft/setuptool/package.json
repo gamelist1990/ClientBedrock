@@ -1,0 +1,30 @@
+{
+  "name": "setuptool",
+  "version": "0.0.1",
+  "author": "Koukunn_",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gamelist1990/PEXclient.git"
+  },
+  "main": "null",
+  "dependencies": {
+    "@minecraft/server": "^1.17.0",
+    "@types/node": "^22.13.10",
+    "chalk": "^5.4.1",
+    "cli-table3": "^0.6.5"
+  },
+  "bugs": {
+    "url": "https://github.com/gamelist1990/PEXclient/issues"
+  },
+  "description": "更新が最新のワールドを表示できます",
+  "homepage": "https://github.com/gamelist1990/PEXclient#readme",
+  "license": "MIT",
+  "scripts": {
+    "auto": "npm run linux && npm run linux-arm && npm run windows-64 && npm run macOS-64 && npm run macOS-arm",
+    "linux": "bun build src/index.ts --compile --target=bun-linux-x64 --minify --outfile setuptool_linux --minify",
+    "linux-arm": "bun build src/index.ts --compile --target=bun-linux-arm64 --minify --outfile setuptool_linuxArm --minify",
+    "windows-64": "bun build src/index.ts --compile --target=bun-windows-x64 --minify --outfile setuptool_windows --minify",
+    "macOS-64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --minify --outfile setuptool_mac64 --minify",
+    "macOS-arm": "bun build src/index.ts --compile --target=bun-darwin-arm64 --minify --outfile setuptool_macArm --minify"
+  }
+}
