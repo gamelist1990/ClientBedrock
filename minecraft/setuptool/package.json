@@ -11,7 +11,8 @@
     "@minecraft/server": "^1.17.0",
     "@types/node": "^22.13.10",
     "chalk": "^5.4.1",
-    "cli-table3": "^0.6.5"
+    "cli-table3": "^0.6.5",
+    "inquirer": "^12.5.0"
   },
   "bugs": {
     "url": "https://github.com/gamelist1990/PEXclient/issues"

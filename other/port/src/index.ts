@@ -181,6 +181,83 @@ async function showDownloadInstructions() {
     process.exit(1);
 }
 
+async function isProcessRunning(executableName: string): Promise<number | null> {
+    const command = platform === 'win32' ? 'tasklist' : 'ps';
+    const args = platform === 'win32' ? ['/FI', `IMAGENAME eq ${executableName}`] : ['-ax', '-c'];
+
+    try {
+        const { exec } = await import('child_process'); // Dynamic import to avoid issues in non-Node environments
+
+        return new Promise((resolve, _reject) => {
+            exec(`${command} ${args.join(' ')}`, (error, stdout, _stderr) => {
+                if (error) {
+                    return resolve(null); // エラーが発生した場合、プロセスID を null で返す
+                }
+
+                if (platform === 'win32') {
+                    if (stdout.includes(executableName)) {
+                        const lines = stdout.split('\n');
+                        for (const line of lines) {
+                            if (line.includes(executableName)) {
+                                const parts = line.trim().split(/\s+/);
+                                const pid = parseInt(parts[1], 10);
+                                if (!isNaN(pid)) {
+                                    console.log(chalk.yellowBright(`プロセス ${executableName} (PID: ${pid}) は既に実行中です。`));
+                                    resolve(pid); // プロセスIDを返す
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    resolve(null);
+                } else {
+                    const lines = stdout.split('\n');
+                    for (const line of lines) {
+                        if (line.includes(executableName) && !line.includes('grep')) {
+                            const parts = line.trim().split(/\s+/);
+                            const pid = parseInt(parts[0], 10);
+                            if (!isNaN(pid)) {
+                                console.log(chalk.yellowBright(`プロセス ${executableName} (PID: ${pid}) は既に実行中です。`));
+                                resolve(pid); // プロセスIDを返す
+                                return;
+                            }
+                        }
+                    }
+                    resolve(null);
+                }
+
+
+            });
+        });
+    } catch (err) {
+        console.error(chalk.red(`プロセスのチェックに必要なモジュールの動的インポート中にエラーが発生しました: ${err}`));
+        return null; // モジュールのインポートエラーが発生した場合、プロセスID を null で返す
+    }
+}
+
+async function killProcess(pid: number): Promise<void> {
+    try {
+        if (platform === 'win32') {
+            await new Promise<void>((resolve, reject) => {
+                const { exec } = require('child_process');
+                exec(`taskkill /F /PID ${pid}`, (error, _stdout, _stderr) => {
+                    if (error) {
+                        console.error(chalk.red(`プロセスの強制終了中にエラーが発生しました (PID: ${pid}): ${error}`));
+                        reject(error);
+                    } else {
+                        console.log(chalk.yellowBright(`プロセス (PID: ${pid}) を強制終了しました。`));
+                        resolve();
+                    }
+                });
+            });
+        } else {
+            process.kill(pid, 'SIGKILL');
+            console.log(chalk.yellowBright(`プロセス (PID: ${pid}) を強制終了しました。`));
+        }
+    } catch (error) {
+        console.error(chalk.red(`プロセスの強制終了中にエラーが発生しました (PID: ${pid}): ${error}`));
+    }
+}
 
 async function startSecureShareNet(config: Config) {
     const executableName = getSecureShareNetExecutableName();
@@ -188,6 +265,12 @@ async function startSecureShareNet(config: Config) {
     if (!executableName || !fs.existsSync(executableName)) {
         showDownloadInstructions();
         return;
+    }
+
+    // 既存のプロセスをチェックして終了
+    const existingPid = await isProcessRunning(executableName);
+    if (existingPid) {
+        await killProcess(existingPid);
     }
 
     if (platform === 'linux') {
@@ -275,18 +358,22 @@ async function startSecureShareNet(config: Config) {
     });
 
     secureShareNetProcess.on('close', async (code) => {
+        secureShareNetProcess = null; // プロセスをnullにする
 
+        let message = '';
         if (code === 0) {
-            console.log(chalk.greenBright(`securesharenet が正常終了しました (コード: ${code})`));
+            message = chalk.greenBright(`securesharenet が正常終了しました (コード: ${code})`);
             await sendToDiscord(config.discordWebhookUrl, ':wave: ポートの公開が終了しました!!');
         } else if (code === null) {
-            console.log(chalk.yellowBright('securesharenet がシグナルにより終了しました'));
+            message = chalk.yellowBright('securesharenet がシグナルにより終了しました');
             await sendToDiscord(config.discordWebhookUrl, ':information_source: ポートの公開が中断されました。');
         } else {
-            console.log(chalk.redBright(`securesharenet が異常終了しました (コード: ${code})`));
+            message = chalk.redBright(`securesharenet が異常終了しました (コード: ${code})`);
             await sendToDiscord(config.discordWebhookUrl, ':warning: securesharenet が予期せず終了しました。');
         }
-        process.exit(0);
+
+        console.log(message); // ログメッセージを表示
+        process.exit(0); // 終了コードを0で終了
     });
 }
 
@@ -317,7 +404,24 @@ async function main() {
         process.exit(0);
     });
 
-    startSecureShareNet(config); // 設定を渡す
+    try {
+        await startSecureShareNet(config); // 設定を渡す
+    } catch (error) {
+        console.error(chalk.red('起動中にエラーが発生しました:'), error);
+        // エラーが発生した場合でも securesharenet を停止
+        if (secureShareNetProcess) {
+            secureShareNetProcess.kill('SIGINT');
+        }
+        process.exit(1);  // エラーコードで終了
+    } finally {
+        // 予期せぬエラーで強制終了されても、確実に securesharenet を停止する
+        process.on('exit', () => {
+            if (secureShareNetProcess) {
+                console.log(chalk.red('予期せぬ終了が発生しました。securesharenetを停止します'));
+                secureShareNetProcess.kill('SIGINT');
+            }
+        });
+    }
 }
 
 main();

@@ -4,7 +4,6 @@ import * as os from 'os';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import Table from 'cli-table3';
 import inquirer from 'inquirer';
-import psList from 'ps-list';
 import kill from 'tree-kill';
 
 interface ScheduledTask {
@@ -17,21 +16,34 @@ interface RunningTask {
   process: ChildProcessWithoutNullStreams;
   name: string;
   command: string;
+  retries: number;
+  isRestarting: boolean;
+}
+
+interface ProcessInfo {
+  pid: number;
+  command: string;
 }
 
 class TaskScheduler {
   public tasks: ScheduledTask[] = [];
   private filePath: string;
   public runningTasks: RunningTask[] = [];
-  private minecraftServerDir: string = "D:\\MinecraftServer"; // デフォルトのMinecraftサーバディレクトリ
-  private similarityThreshold: number = 0.4;       // デフォルトの類似度閾値
+  private minecraftServerDir: string = "D:\\MinecraftServer";
+  private similarityThreshold: number = 0.4;
+  private initialProcesses: { [taskName: string]: ProcessInfo[] } = {};
+  private maxRetries: number = 10;
+  private retryDelay: number = 5000;
+  private killDelay: number = 3000;
+  private restartDelay: number = 5000;
+  private workingDirCache: { [commandName: string]: string | undefined } = {};
+  public isShuttingDown: boolean = false; // シャットダウンフラグ
 
 
   constructor(filePath: string) {
     this.filePath = filePath;
     this.loadTasks();
   }
-
 
   private loadTasks(): void {
     try {
@@ -183,28 +195,299 @@ class TaskScheduler {
     console.log(table.toString());
   }
 
-  private async executeCommand(commandString: string, taskName: string): Promise<void> {
+  private async executeCommand(commandString: string, taskName: string, retryCount: number = 0): Promise<ProcessInfo | null> {
+    if (this.isShuttingDown) {
+      console.log(`[${taskName} - ${commandString}] シャットダウン中のため、コマンドの実行をスキップします。`);
+      return null;
+    }
+
     commandString = commandString.replace(/^"(.*)"$/, '$1');
     const [command, ...args] = commandString.split(" ");
 
     if (!command) {
       console.warn(`無効なコマンド: ${commandString}`);
-      return;
+      return null;
     }
 
     let workingDir: string | undefined;
     try {
-      const commandPath = commandString.split(' ')[0];
-      const dir = path.dirname(commandPath);
+      workingDir = await this.determineWorkingDirectory(command);
+    } catch (error) {
+      console.error("作業ディレクトリ設定エラー:", error);
+      workingDir = process.cwd();
+    }
 
-      if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
-        workingDir = dir;
+    try {
+      const child = spawn(command, args, {
+        cwd: workingDir,
+        shell: true,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
+
+      child.stdout.on('data', (data) => {
+        process.stdout.write(`[${taskName} - ${commandString}] ${data}`);
+      });
+
+      child.stderr.on('data', (data) => {
+        process.stderr.write(`[${taskName} - ${commandString}] ${data}`);
+      });
+
+      // runningTasks からタスクを探す
+      const runningTaskIndex = this.runningTasks.findIndex(t => t.name === taskName && t.command === commandString);
+
+      child.on('close', (code) => {
+        console.log(`[${taskName} - ${commandString}] 終了: コード ${code}`);
+
+        if (runningTaskIndex !== -1) {
+          const runningTask = this.runningTasks[runningTaskIndex];
+          runningTask.isRestarting = false;
+          runningTask.retries = retryCount;
+
+          if (code !== 0 && retryCount < this.maxRetries && !this.isShuttingDown) {
+            console.error(`[${taskName} - ${commandString}] リトライします (${retryCount + 1}/${this.maxRetries})`);
+            setTimeout(() => {
+              this.executeCommand(commandString, taskName, retryCount + 1);
+            }, this.retryDelay);
+          } else {
+            if (code !== 0) {
+              console.error(`[${taskName} - ${commandString}] リトライ回数上限に達しました。`);
+            }
+            this.runningTasks.splice(runningTaskIndex, 1);
+          }
+        } else {
+          console.warn(`[${taskName} - ${commandString}] 実行中のタスクが見つかりませんでした。`);
+        }
+      });
+
+      child.on('error', (err) => {
+        console.error(`[${taskName} - ${commandString}] エラー: ${err}. リトライします (${retryCount + 1}/${this.maxRetries})`);
+
+        const runningTaskIndex = this.runningTasks.findIndex(t => t.name === taskName && t.command === commandString);
+
+        if (runningTaskIndex !== -1) {
+          const runningTask = this.runningTasks[runningTaskIndex];
+          runningTask.isRestarting = false;
+          runningTask.retries = retryCount;
+
+          if (retryCount < this.maxRetries && !this.isShuttingDown) {
+            setTimeout(() => {
+              this.executeCommand(commandString, taskName, retryCount + 1);
+            }, this.retryDelay);
+          } else {
+            console.error(`[${taskName} - ${commandString}] リトライ回数上限に達しました。`);
+            this.runningTasks.splice(runningTaskIndex, 1);
+          }
+        } else {
+          console.warn(`[${taskName} - ${commandString}] 実行中のタスクが見つかりませんでした。`);
+        }
+      });
+
+      const newTask: RunningTask = { process: child, name: taskName, command: commandString, retries: 0, isRestarting: false };
+      this.runningTasks.push(newTask);
+
+
+      if (!child.pid) {
+        throw new Error('プロセスIDが取得できませんでした。');
+      }
+      return { pid: child.pid, command: commandString };
+
+    } catch (error) {
+      console.error("コマンド実行エラー:", error);
+      if (retryCount < this.maxRetries && !this.isShuttingDown) {
+        setTimeout(() => {
+          this.executeCommand(commandString, taskName, retryCount + 1);
+        }, this.retryDelay);
       } else {
-        const commandName = command.split('/').pop()?.split('\\').pop() || command;
+        console.error(`[${taskName} - ${commandString}] リトライ回数上限に達しました。`);
+      }
+      return null;
+    }
+  }
+
+  public async runTaskNow(taskName: string): Promise<void> {
+    const task = this.tasks.find((t) => t.name === taskName);
+    if (!task) {
+      console.error(`タスク "${taskName}" が見つかりません。`);
+      return;
+    }
+
+    await this.killExistingProcessesByTaskName(taskName);
+
+    // 再起動遅延
+    await new Promise(resolve => setTimeout(resolve, this.restartDelay));
+
+    console.log(`タスクを即時実行中: ${task.name}`);
+    for (const commandString of task.commands) {
+      await this.executeCommand(commandString, task.name);
+    }
+  }
+
+
+  public async killExistingProcessesByTaskName(taskName: string): Promise<void> {
+    if (this.isShuttingDown) {
+      console.log(`[${taskName}] シャットダウン中のため、プロセスの強制終了をスキップします。`);
+      return;
+    }
+
+    const task = this.tasks.find(t => t.name === taskName);
+    if (!task) {
+      return;
+    }
+    const processesToKill: ProcessInfo[] = [];
+
+    if (this.initialProcesses[taskName]) {
+      processesToKill.push(...this.initialProcesses[taskName]);
+    }
+
+    try {
+      for (const command of task.commands) {
+        const processes = await this.findProcesses(command);
+        processesToKill.push(...processes);
+      }
+
+      await this.killProcesses(processesToKill);
+    } catch (error) {
+      console.error("プロセスのキル中にエラーが発生しました:", error);
+    }
+
+    // 再起動遅延を追加
+    await new Promise(resolve => setTimeout(resolve, this.restartDelay));
+  }
+
+
+  private async killProcesses(processesToKill: ProcessInfo[]): Promise<void> {
+    if (this.isShuttingDown) {
+      console.log('シャットダウン中のため、個別のプロセス強制終了をスキップします。');
+      return;
+    }
+
+    for (const p of processesToKill) {
+      console.log(`プロセス (PID: ${p.pid}, コマンド: ${p.command}) を強制終了します...`);
+      try {
+        kill(p.pid, 'SIGKILL', (killErr) => {
+          if (killErr) {
+            console.error(`強制プロセス終了エラー (PID: ${p.pid}):`, killErr);
+          }
+        });
+      } catch (err: any) {
+        console.error(`プロセス終了エラー (PID: ${p.pid}):`, err);
+      }
+    }
+
+    // プロセスキル遅延を追加
+    await new Promise(resolve => setTimeout(resolve, this.killDelay));
+  }
+
+  private async findProcesses(fullCommand: string): Promise<ProcessInfo[]> {
+    const foundProcesses: ProcessInfo[] = [];
+
+    try {
+      let command: string;
+      let args: string[];
+
+      if (os.platform() === 'win32') {
+        command = 'tasklist';
+        args = ['/FO', 'CSV', '/NH'];
+      } else {
+        command = 'ps';
+        args = ['-ax', '-o', 'pid,command'];
+      }
+
+      const { stdout } = await new Promise<{ stdout: string, stderr: string }>((resolve, reject) => {
+        const process = spawn(command, args);
+        let stdout = '';
+        let stderr = '';
+
+        process.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        process.on('close', (code) => {
+          if (code === 0) {
+            resolve({ stdout, stderr });
+          } else {
+            reject(new Error(`プロセス "${command}" がエラーコード ${code} で終了しました。stderr: ${stderr}`));
+          }
+        });
+
+        process.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      const lines = stdout.trim().split('\n');
+
+      for (const line of lines) {
+        let pid: string | undefined, processCommand: string | undefined;
+
+        if (os.platform() === 'win32') {
+          // Windows: tasklist の出力から PID とコマンドを抽出
+          const values = line.split('","').map(v => v.replace(/"/g, '').trim());
+          pid = values[1];
+          processCommand = values[0];
+        } else {
+          // Linux/macOS: ps の出力から PID とコマンドを抽出
+          const values = line.trim().split(' ');
+          pid = values[0];
+          processCommand = values.slice(1).join(' ');
+        }
+        //プロセス名にfullCommandが含まれているか確認
+        if (processCommand && processCommand.includes(fullCommand)) {
+          const parsedPid = parseInt(pid, 10);
+          if (!isNaN(parsedPid)) {
+            foundProcesses.push({ pid: parsedPid, command: processCommand });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("プロセスリスト取得エラー:", error);
+      return [];
+    }
+
+    return foundProcesses;
+  }
+
+  private async determineWorkingDirectory(commandName: string): Promise<string | undefined> {
+    if (this.workingDirCache[commandName]) {
+      return this.workingDirCache[commandName]; // キャッシュから取得
+    }
+
+    let workingDir: string | undefined;
+    try {
+      // 絶対パスの場合、ディレクトリを取得
+      if (path.isAbsolute(commandName)) {
+        workingDir = path.dirname(commandName);
+      } else {
+        // 相対パスの場合、カレントディレクトリからの絶対パスに変換
+        const absoluteCommandPath = path.resolve(commandName);
+        workingDir = path.dirname(absoluteCommandPath);
+      }
+
+      if (fs.existsSync(workingDir) && fs.statSync(workingDir).isDirectory()) {
+        // 存在する場合、それを作業ディレクトリとする
+        this.workingDirCache[commandName] = workingDir;
+        return workingDir;
+      }
+      else {
+        workingDir = undefined
+      }
+
+      //以下従来の処理
+      if (!workingDir) {
         const minecraftServerDir = this.minecraftServerDir;
         const subdirs = fs.readdirSync(minecraftServerDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory())
           .map(dirent => dirent.name);
+
+        // 類似度でソート
+        subdirs.sort((a, b) => this.similarityScore(commandName, b) - this.similarityScore(commandName, a));
 
         let bestMatchDir = "";
         let bestMatchScore = 0;
@@ -240,96 +523,10 @@ class TaskScheduler {
       workingDir = process.cwd();
     }
 
-    try {
-      const child = spawn(command, args, {
-        cwd: workingDir,
-        shell: true,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-
-      child.stdout.setEncoding('utf8');
-      child.stderr.setEncoding('utf8');
-
-      child.stdout.on('data', (data) => {
-        process.stdout.write(`[${taskName} - ${commandString}] ${data}`);
-      });
-
-      child.stderr.on('data', (data) => {
-        process.stderr.write(`[${taskName} - ${commandString}] ${data}`);
-      });
-
-      child.on('close', (code) => {
-        console.log(`[${taskName} - ${commandString}] 終了: コード ${code}`);
-        this.runningTasks = this.runningTasks.filter(t => t.process !== child);
-      });
-
-      child.on('error', (err) => {
-        console.error(`[${taskName} - ${commandString}] エラー: ${err}`);
-      });
-
-      this.runningTasks.push({ process: child, name: taskName, command: commandString });
-
-    } catch (error) {
-      console.error("コマンド実行エラー:", error);
-    }
+    this.workingDirCache[commandName] = workingDir; // キャッシュに保存
+    return workingDir;
   }
 
-  public async runTaskNow(taskName: string): Promise<void> {
-    const task = this.tasks.find((t) => t.name === taskName);
-    if (!task) {
-      console.error(`タスク "${taskName}" が見つかりません。`);
-      return;
-    }
-
-    await this.killExistingProcessesByTaskName(taskName);
-
-    console.log(`タスクを即時実行中: ${task.name}`);
-    await Promise.all(task.commands.map(commandString => this.executeCommand(commandString, task.name)));
-  }
-
-  public async killExistingProcessesByTaskName(taskName: string): Promise<void> {
-    const task = this.tasks.find(t => t.name === taskName);
-    if (!task) {
-      return;
-    }
-
-    for (const command of task.commands) {
-      await this.killExistingProcess(command);
-    }
-  }
-
-  private async killExistingProcess(fullCommand: string): Promise<void> {
-    const commandName = fullCommand.split('/').pop()?.split('\\').pop() || fullCommand;
-    try {
-      const allProcesses = await psList();
-      const processesToKill = allProcesses.filter(process => {
-        const processCommand = os.platform() === 'win32' ? process.cmd : process.name;
-        return processCommand && processCommand.includes(commandName);
-      });
-
-      for (const p of processesToKill) {
-        const { killProcess } = await inquirer.prompt<{ killProcess: boolean }>([
-          {
-            type: 'confirm',
-            name: 'killProcess',
-            message: `プロセス (PID: ${p.pid}, コマンド: ${os.platform() === 'win32' ? p.cmd : p.name}) を終了しますか？`,
-            default: false,
-          },
-        ]);
-
-        if (killProcess) {
-          console.log(`プロセス (PID: ${p.pid}) を終了しています...`);
-          kill(p.pid, 'SIGKILL', (err) => {
-            if (err) {
-              console.error(`プロセス終了エラー (PID: ${p.pid}):`, err);
-            }
-          });
-        }
-      }
-    } catch (error) {
-      console.error("プロセスリスト取得エラー:", error);
-    }
-  }
 
   private similarityScore(str1: string, str2: string): number {
     str1 = str1.toLowerCase();
@@ -368,12 +565,18 @@ class TaskScheduler {
       return;
     }
 
-    this.tasks.forEach(task => {
+    this.tasks.forEach(async task => {
       const [hours, minutes] = task.time.split(':');
       const scheduleTask = async () => {
         console.log(`[${new Date().toLocaleString()}] タスク実行: ${task.name}`);
         await this.killExistingProcessesByTaskName(task.name);
-        await Promise.all(task.commands.map(commandString => this.executeCommand(commandString, task.name)));
+
+        // 再起動遅延
+        await new Promise(resolve => setTimeout(resolve, this.restartDelay));
+
+        for (const commandString of task.commands) {
+          await this.executeCommand(commandString, task.name);
+        }
       };
 
       const now = new Date();
@@ -382,8 +585,20 @@ class TaskScheduler {
 
       if (runImmediately) {
         console.log(`タスク "${task.name}" を即時実行します。`);
-        scheduleTask(); // 即時実行
-        runImmediately = false; // 以降は通常の遅延実行
+        this.initialProcesses[task.name] = [];
+
+        await this.killExistingProcessesByTaskName(task.name);
+
+        // 再起動遅延
+        await new Promise(resolve => setTimeout(resolve, this.restartDelay));
+
+        for (const commandString of task.commands) {
+          const processInfo = await this.executeCommand(commandString, task.name);
+          if (processInfo) {
+            this.initialProcesses[task.name].push(processInfo);
+          }
+        }
+        runImmediately = false;
       }
 
       if (delay < 0) {
@@ -444,7 +659,9 @@ function setupInputAndExit(scheduler: TaskScheduler) {
 
   process.on('SIGINT', async () => {
     console.log('\nCtrl+C を検知。実行中のタスクを終了しています...');
+    scheduler.isShuttingDown = true; // シャットダウンフラグを設定
 
+    // 実行中のタスクを安全に終了
     for (const t of scheduler.runningTasks) {
       t.process.kill();
       await new Promise<void>((resolve) => {
@@ -456,9 +673,11 @@ function setupInputAndExit(scheduler: TaskScheduler) {
       });
     }
 
+    // タスクに関連する残りのプロセスを強制終了
     for (const task of scheduler.tasks) {
       await scheduler.killExistingProcessesByTaskName(task.name);
     }
+
     console.log('すべてのプロセスを終了しました。');
     process.exit(0);
   });
@@ -500,6 +719,9 @@ async function showMenu(scheduler: TaskScheduler) {
         setupInputAndExit(scheduler);
         return;
       case '終了':
+        scheduler.isShuttingDown = true; // シャットダウンフラグを設定
+
+        // 実行中のタスクを安全に終了
         for (const t of scheduler.runningTasks) {
           t.process.kill();
           await new Promise<void>((resolve) => {
@@ -511,9 +733,11 @@ async function showMenu(scheduler: TaskScheduler) {
           });
         }
 
+        // タスクに関連する残りのプロセスを強制終了
         for (const task of scheduler.tasks) {
           await scheduler.killExistingProcessesByTaskName(task.name);
         }
+
         console.log('すべてのプロセスを終了しました。');
         process.exit(0);
 
@@ -522,4 +746,5 @@ async function showMenu(scheduler: TaskScheduler) {
     }
   }
 }
+
 main();
