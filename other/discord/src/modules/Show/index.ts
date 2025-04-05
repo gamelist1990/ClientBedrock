@@ -3,8 +3,6 @@ import { PREFIX, registerCommand } from "../..";
 import { Command } from "../../types/command";
 
 
-console.log('⚙️ show コマンド定義読み込み...');
-
 const showCommand: Command = {
     name: 'show',
     description: '指定したユーザーIDのサーバー内情報を表示します。',

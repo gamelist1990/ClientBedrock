@@ -1,0 +1,55 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // --- リソースファイルをコンパイルするタスク ---
+            "label": "Compile Resources", // タスクの識別名 (任意)
+            "type": "shell", // シェルコマンドとして実行
+            "command": "C:\\msys64\\mingw64\\bin\\windres.exe", // windres.exe のパス (環境に合わせて変更)
+            "args": [
+                "${fileDirname}\\resource.rc", // 入力リソーススクリプト (.rc)
+                "-O",
+                "coff", // 出力形式
+                "-o",
+                "${fileDirname}\\resource.o" // 出力オブジェクトファイル (.o)
+            ],
+            "group": "build", // ビルドグループの一部とする (任意)
+            "presentation": {
+                "reveal": "silent", // 実行時にパネルをあまり表示しない (任意)
+                "clear": false
+            }
+        },
+        {
+            // --- メインのビルドタスク (launch.jsonから呼ばれるもの) ---
+            "label": "C/C++: g++.exe アクティブなファイルのビルド", // launch.jsonのpreLaunchTaskと一致させる
+            "type": "cppbuild", // または "shell"
+            "command": "C:\\msys64\\mingw64\\bin\\g++.exe", // g++.exe のパス (launch.jsonと合わせる)
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g", // デバッグ情報を付加
+                "${file}", // 現在アクティブな C++ ファイル
+                "${fileDirname}\\resource.o", // ★コンパイル済みのリソースオブジェクトファイルを追加
+                "-o", // 出力ファイル指定
+                "${fileDirname}\\${fileBasenameNoExtension}.exe", // 出力EXEファイル名
+                "-lshell32", // ★ShellExecuteに必要なライブラリ (追加)
+                // "-static-libgcc",            // 必要に応じて静的リンク
+                // "-static-libstdc++"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc" // コンパイラのエラー出力を解析
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true // これをデフォルトのビルドタスクにする
+            },
+            "detail": "コンパイラ: C:\\msys64\\mingw64\\bin\\g++.exe",
+            // ★ビルド前にリソースコンパイルタスクを実行させる
+            "dependsOn": [
+                "Compile Resources"
+            ]
+        }
+    ]
+}

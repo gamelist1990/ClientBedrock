@@ -85,3 +85,8 @@ Koukunn_
 ## 貢献
 
 Issue、PR歓迎です。
+
+
+
+
+CLASS_NAMES = ["human", "bot", "redstone", "emerald", "diamond", "iron", "entity"]
