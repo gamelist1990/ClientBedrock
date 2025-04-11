@@ -1,80 +1,111 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 
-interface Data {
+// Json db 更新 各guild に対応版
+
+interface GuildData {
     [key: string]: any;
+}
+
+interface DatabaseStructure {
+    [guildId: string]: GuildData;
 }
 
 class JsonDB {
     private filePath: string;
     private dbDir: string;
 
-    constructor(dbName: string, dbDirectory: string = './database') {  // dbDirectory defaults to './database'
-        this.dbDir = path.resolve(dbDirectory);  // Ensure absolute path
+    constructor(dbName: string, dbDirectory: string = './database') {
+        this.dbDir = path.resolve(dbDirectory);
         this.filePath = path.join(this.dbDir, `${dbName}.json`);
     }
 
     private async ensureDirectoryExists(): Promise<void> {
         try {
-            await fs.mkdir(this.dbDir, { recursive: true }); // Creates the directory if it doesn't exist (recursive: true handles nested paths)
+            await fs.mkdir(this.dbDir, { recursive: true });
         } catch (error: any) {
-            if (error.code !== 'EEXIST') { // Ignore if directory already exists
+            if (error.code !== 'EEXIST') {
+                console.error(`Error creating directory ${this.dbDir}:`, error);
                 throw error;
             }
         }
     }
 
-
-    private async readData(): Promise<Data> {
-        await this.ensureDirectoryExists(); // Ensure directory exists before reading
+    private async readData(): Promise<DatabaseStructure> {
+        await this.ensureDirectoryExists();
         try {
             const data = await fs.readFile(this.filePath, 'utf-8');
-            return JSON.parse(data);
+            return JSON.parse(data) as DatabaseStructure;
         } catch (error: any) {
             if (error.code === 'ENOENT') {
                 return {};
             }
+            console.error(`Error reading or parsing database file ${this.filePath}:`, error);
             throw error;
         }
     }
 
-    private async writeData(data: Data): Promise<void> {
-        await this.ensureDirectoryExists(); // Ensure directory exists before writing
-        await fs.writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf-8');
+    private async writeData(data: DatabaseStructure): Promise<void> {
+        await this.ensureDirectoryExists();
+        try {
+            await fs.writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf-8');
+        } catch (error) {
+            console.error(`Error writing database file ${this.filePath}:`, error);
+            throw error;
+        }
     }
 
-    async getAll(): Promise<Data> {
-        return await this.readData();
+    async getAll(guildId: string): Promise<GuildData> {
+        const allData = await this.readData();
+        return allData[guildId] || {};
     }
 
-    async get(key: string): Promise<any | undefined> {
-        const data = await this.readData();
-        return data[key];
+    async get(guildId: string, key: string): Promise<any | undefined> {
+        const allData = await this.readData();
+        if (allData[guildId] && allData[guildId].hasOwnProperty(key)) {
+            return allData[guildId][key];
+        }
+        return undefined;
     }
 
-    async set(key: string, value: any): Promise<void> {
-        const data = await this.readData();
-        data[key] = value;
-        await this.writeData(data);
+    async set(guildId: string, key: string, value: any): Promise<void> {
+        const allData = await this.readData();
+        if (!allData[guildId]) {
+            allData[guildId] = {};
+        }
+        allData[guildId][key] = value;
+        await this.writeData(allData);
     }
 
-    async delete(key: string): Promise<boolean> {
-        const data = await this.readData();
-        if (data.hasOwnProperty(key)) {
-            delete data[key];
-            await this.writeData(data);
+    async delete(guildId: string, key: string): Promise<boolean> {
+        const allData = await this.readData();
+        if (allData[guildId] && allData[guildId].hasOwnProperty(key)) {
+            delete allData[guildId][key];
+            await this.writeData(allData);
             return true;
         }
         return false;
     }
 
-    async has(key: string): Promise<boolean> {
-        const data = await this.readData();
-        return data.hasOwnProperty(key);
+    async has(guildId: string, key: string): Promise<boolean> {
+        const allData = await this.readData();
+        return !!allData[guildId] && allData[guildId].hasOwnProperty(key);
     }
 
-    async clear(): Promise<void> {
+    async clearGuild(guildId: string): Promise<void> {
+        const allData = await this.readData();
+        if (allData[guildId]) {
+            allData[guildId] = {};
+            await this.writeData(allData);
+        }
+    }
+
+    async clearAllGuilds(): Promise<void> {
         await this.writeData({});
+    }
+
+    async getRawData(): Promise<DatabaseStructure> {
+        return await this.readData();
     }
 }
 

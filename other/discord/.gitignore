@@ -6,3 +6,4 @@ build/
 out/
 *.exe
 src/config.json
+src/database

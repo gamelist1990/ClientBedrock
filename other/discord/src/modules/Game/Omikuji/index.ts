@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
-import { registerCommand } from "../.."; 
-import { Command } from "../../types/command";
+import { registerCommand } from "../../..";
+import { Command } from "../../../types/command";
+
 
 interface FortuneResult {
     category: '大吉' | '中吉' | '吉' | '小吉' | '末吉' | '凶' | '大凶'; // 運勢カテゴリ

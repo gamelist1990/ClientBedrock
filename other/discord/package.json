@@ -8,6 +8,7 @@
   },
   "main": "null",
   "dependencies": {
+    "@google/genai": "^0.7.0",
     "canvas": "^3.1.0",
     "cheerio": "^1.0.0",
     "discord.js": "^14.18.0",

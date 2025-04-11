@@ -1,10 +1,11 @@
-import { Message, Client } from 'discord.js';
+import { Message, Client, Interaction } from 'discord.js';
 
 export interface Command {
     name: string;
     description: string;
     aliases?: string[];
     usage?: string;
-    admin?: boolean; // ★ 管理者専用フラグ (プロパティ名を変更)
+    admin?: boolean; 
     execute: (client: Client, message: Message, args: string[]) => Promise<void> | void;
+    handleInteraction?: (interaction: Interaction) => Promise<void>;
 }

@@ -1,54 +1,69 @@
-import { EmbedBuilder, TextChannel } from 'discord.js'; // EmbedBuilder をインポート
-import { registerCommand, commands, PREFIX, currentConfig } from '../../index'; // ★ commands をインポート
+import { EmbedBuilder, TextChannel } from 'discord.js';
+import { registerCommand, commands, PREFIX, currentConfig } from '../../index';
 import { Command } from '../../types/command';
+
+const ITEMS_PER_PAGE = 8;
 
 const helpCommand: Command = {
     name: 'help',
     description: '利用可能なコマンドの一覧や詳細を表示します。',
     aliases: ['h', '?'],
-    usage: 'help [コマンド名]',
+    usage: 'help [コマンド名 | ページ番号]',
     execute: async (_client, message, args) => {
         const isAdmin = currentConfig.admins?.includes(message.author.id) ?? false;
+        const allCommandObjects = Array.from(commands.values());
+        const uniqueCommandObjects = [...new Set(allCommandObjects)];
+        const availableCommandsArray = uniqueCommandObjects
+            .filter(cmd => !cmd.admin || isAdmin)
+            .sort((a, b) => a.name.localeCompare(b.name)); 
 
-        if (args.length === 0) {
-            // コマンド一覧
+        if (args.length === 0 || /^\d+$/.test(args[0])) {
+        
+            let page = 1;
+            if (args.length > 0 && /^\d+$/.test(args[0])) {
+                page = parseInt(args[0], 10);
+            }
+
+            const totalPages = Math.ceil(availableCommandsArray.length / ITEMS_PER_PAGE);
+            page = Math.max(1, Math.min(page, totalPages));
+
+            const startIndex = (page - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const commandsToShow = availableCommandsArray.slice(startIndex, endIndex);
+
             const embed = new EmbedBuilder()
                 .setColor(0x0099FF)
                 .setTitle('🤖 利用可能なコマンド')
                 .setDescription(`プレフィックス: \`${PREFIX}\`\n詳細: \`${PREFIX}help [コマンド名]\``);
 
-            // 表示するコマンドをフィルタリング (修正箇所)
-            const availableCommands = commands.filter((cmd, key) => {
-                return cmd.name === key && (!cmd.admin || isAdmin); // ★ adminOnly を admin に変更
-            });
-
-            if (availableCommands.size > 0) {
+            if (commandsToShow.length > 0) {
                 let commandList = '';
-                availableCommands.sort((a, b) => a.name.localeCompare(b.name)).forEach(cmd => {
-                    // 管理者専用コマンドには目印を付ける (修正箇所)
-                    const adminMark = cmd.admin ? '👑 ' : ''; // ★ adminOnly を admin に変更
+                commandsToShow.forEach(cmd => {
+                    const adminMark = cmd.admin ? '👑 ' : '';
                     commandList += `**\`${PREFIX}${cmd.name}\`**: ${adminMark}${cmd.description || '説明なし'}\n`;
                 });
-                embed.addFields({ name: 'コマンドリスト', value: commandList || 'コマンドが見つかりません。' });
+                embed.addFields({ name: `コマンドリスト (ページ ${page}/${totalPages})`, value: commandList });
+            } else if (page > 1) {
+                embed.addFields({ name: 'コマンドリスト', value: `ページ ${page} には表示するコマンドがありません。` });
             } else {
                 embed.addFields({ name: 'コマンドリスト', value: '現在利用可能なコマンドはありません。' });
             }
+
+            embed.setFooter({ text: `全${availableCommandsArray.length}コマンド | ${totalPages > 1 ? `他のページを見るには \`${PREFIX}help [ページ番号]\`` : ''}` });
 
             if (message.channel instanceof TextChannel) {
                 await message.channel.send({ embeds: [embed] });
             }
 
         } else {
-            // コマンド詳細
             const commandName = args[0].toLowerCase();
-            const command = commands.get(commandName);
+            const command = commands.get(commandName) || Array.from(commands.values()).find(cmd => cmd.aliases?.includes(commandName));
 
             if (!command) {
-                await message.reply(`❓ コマンド \`${commandName}\` は見つかりませんでした。`); return;
+                await message.reply(`❓ コマンド \`${commandName}\` は見つかりませんでした。\nコマンド一覧を見るには \`${PREFIX}help\` を実行してください。`);
+                return;
             }
-
-            // 管理者専用コマンドを管理者以外が見ようとした場合は拒否 (修正箇所)
-            if (command.admin && !isAdmin) { // ★ adminOnly を admin に変更
+            if (command.admin && !isAdmin) {
                 console.log(`🚫 権限拒否: ${message.author.tag} が管理者コマンド ${command.name} のヘルプを試行`);
                 await message.reply(`❓ コマンド \`${commandName}\` は見つかりませんでした。(または権限がありません)`);
                 return;
@@ -59,15 +74,15 @@ const helpCommand: Command = {
                 .setTitle(`コマンド詳細: \`${PREFIX}${command.name}\``)
                 .setDescription(command.description || '説明なし');
 
-            // タイトルに管理者専用マークを追加 (修正箇所)
-            if (command.admin) { // ★ adminOnly を admin に変更
+            if (command.admin) {
                 embed.setTitle(`👑 コマンド詳細: \`${PREFIX}${command.name}\` (管理者専用)`);
             }
 
             if (command.aliases && command.aliases.length > 0) {
                 embed.addFields({ name: 'エイリアス', value: command.aliases.map(a => `\`${PREFIX}${a}\``).join(', ') });
             }
-            embed.addFields({ name: '使い方', value: `\`${PREFIX}${command.usage || command.name}\`` });
+            const usage = command.usage || command.name;
+            embed.addFields({ name: '使い方', value: `\`${PREFIX}${usage}\`` });
 
             if (message.channel instanceof TextChannel) {
                 await message.channel.send({ embeds: [embed] });
@@ -76,13 +91,15 @@ const helpCommand: Command = {
     }
 };
 
-
 const aboutCommand: Command = {
     name: 'about',
     description: 'このツールについて表示します。',
     execute: async (_client, message, _args) => {
         if (message.channel instanceof TextChannel) {
-            const mes = `Discord 管理ツール (TypeScript版) - Self-Responsibility`
+            const mes = `**Discord 管理ツール (TypeScript版)**
+
+- 現在色々機能を追加中
+- 開発運営元: こう君`;
             await message.channel.send(mes);
         }
     }
@@ -91,4 +108,3 @@ const aboutCommand: Command = {
 // コマンド登録
 registerCommand(helpCommand);
 registerCommand(aboutCommand);
-

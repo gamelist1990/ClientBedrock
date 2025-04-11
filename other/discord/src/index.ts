@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials, PresenceUpdateStatus, ActivityType, Collection, Events, Message, User } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, PresenceUpdateStatus, ActivityType, Collection, Events, Message, User, Interaction } from 'discord.js';
 import inquirer from 'inquirer';
 import fs from 'fs/promises';
 import fsSync from 'fs';
@@ -240,7 +240,7 @@ async function main() {
             GatewayIntentBits.GuildMessages,
             GatewayIntentBits.MessageContent,
         ],
-        partials: [Partials.Channel],
+        partials: [Partials.Channel, Partials.Message],
     });
 
     client.once(Events.ClientReady, async (readyClient) => {
@@ -304,6 +304,49 @@ async function main() {
         }
     });
 
+
+
+    //ボタンインタラクション用の コード(多分バグが無い限り機能する[オセロ/OxGameを動かしてる感じエラーはまだ起きていない])
+    client.on(Events.InteractionCreate, async (interaction: Interaction) => {
+        if (!interaction.isButton()) return;
+
+        const customId = interaction.customId;
+        const commandName = customId.split('_')[0];
+
+        if (!commandName) {
+            console.warn(`⚠️ ボタンの customId (${customId}) からコマンド名を特定できませんでした。`);
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ content: '🤔 無効なボタン操作のようです。', ephemeral: true });
+                }
+            } catch (e) { console.error("無効ボタンへの返信失敗:", e); }
+            return;
+        }
+        const command = commands.get(commandName);
+        if (command && typeof command.handleInteraction === 'function') {
+            try {
+                await command.handleInteraction(interaction);
+            } catch (error) {
+                console.error(`❌ ボタン処理エラー (${commandName} / ID: ${customId}):`, error);
+                try {
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: '🤕 ボタン操作の処理中にエラーが発生しました。', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: '🤕 ボタン操作の処理中にエラーが発生しました。', ephemeral: true });
+                    }
+                } catch (replyError) {
+                    console.error(`インタラクションエラー (${commandName}) の返信失敗:`, replyError);
+                }
+            }
+        } else {
+            console.warn(`⚠️ '${commandName}' コマンドまたは handleInteraction が見つかりません (Button ID: ${customId})`);
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ content: '🤔 このボタンに対応する機能が見つからないか、現在利用できないようです。', ephemeral: true });
+                }
+            } catch (e) { console.error("未対応ボタンへの返信失敗:", e); }
+        }
+    });
     
 
     client.on(Events.Error, (error) => console.error('❌ Discord クライアントエラー:', error.message));

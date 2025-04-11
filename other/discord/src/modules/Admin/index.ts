@@ -3,6 +3,9 @@ import { currentConfig, PREFIX, saveConfig, registerCommand } from "../..";
 import { Command } from "../../types/command";
 
 
+//AdminはDataBaseを使わず 調節configに保存
+
+
 const adminCommandBase: Command = {
   name: "admin",
   description: "管理者設定を管理します。",
