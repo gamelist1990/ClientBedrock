@@ -95,12 +95,12 @@ const aboutCommand: Command = {
     name: 'about',
     description: 'このツールについて表示します。',
     execute: async (_client, message, _args) => {
-        if (message.channel instanceof TextChannel) {
+        if (message) {
             const mes = `**Discord 管理ツール (TypeScript版)**
 
 - 現在色々機能を追加中
 - 開発運営元: こう君`;
-            await message.channel.send(mes);
+            await message.reply(mes);
         }
     }
 };

@@ -1,92 +1,91 @@
-# ClientBedrock
+# ClientBedrock - Discord 管理ツール (TypeScript版)
 
-MinecraftBedrock版のユーティリティツール群です。Minecraftの管理や運用を効率化するための様々なツールを提供します。
+## ClientBedrock README
 
-## 機能一覧
+このツールは、Minecraft Bedrock Edition サーバーの管理を支援するための多機能な Discord Bot です。TypeScript で開発されており、モジュール式の設計により、容易な拡張とカスタマイズが可能です。
 
-### Minecraft関連ツール
+## 主な機能
 
-- **AutoSave**
-  - Minecraftワールドの自動バックアップツール
-  - 設定可能なバックアップ間隔とバックアップファイルの保持数
-  - GUIで進捗確認可能
+### コマンド管理
+Discord サーバーから Minecraft サーバーを管理するための豊富なコマンドセットを提供します。
 
-- **SetupTool** 
-  - TypeScript開発環境の自動セットアップツール
-  - Minecraft Script APIの開発環境を構築
-  - Node.jsの自動チェックと必要な依存関係のインストール
+### 自動化
+定期的なタスク（ワールドの自動保存など）を自動化します。
 
-- **WorldList**
-  - インストール済みのMinecraftワールド一覧表示
-  - 最終更新日でソート
-  - ワールドフォルダを直接開く機能
+### データ管理
+JSON データベースを使用して、設定やユーザーデータを管理します。
+
+### AI連携
+Gemini や LocalAI との連携により、高度な応答や処理を実現します。
+
+### ユーティリティ
+UUID 生成、スキン情報取得、ポート公開などの便利なユーティリティを提供します。
+
+## モジュール構成
+
+このプロジェクトは、以下の主要なモジュールで構成されています。
+
+### minecraft/
+Minecraft サーバーに関連するツールとスクリプトが含まれています。
+*   **autoSave/**: ワールドの自動保存を管理します。
+*   **ChangeProcess/**: プロセスの変更を管理します。
+*   **Goto/**: YOLO を使用したアノテーションツールです。
+*   **setuptool/**: TypeScript 開発環境のセットアップを支援します。
+*   **worldlist/**: ワールドリストを管理します。
+
+### other/
+その他の機能を提供するモジュールが含まれています。
+*   **AISystem/**: AI 関連の機能を提供します。
+*   **database/**: JSON データベースを管理します。
+*   **discord/**: Discord Bot の主要なロジックが含まれています。
+*   **openProcess/**: プロセス管理ツールを提供します。
+*   **port/**: ポート公開ツールを提供します。
+*   **task/**: タスク管理機能を提供します。
+*   **test/**: テスト関連のファイルが含まれています。
+
+## Discord Bot コマンド
+
+この Bot は、様々なコマンドを提供します。以下はその一部です。
+
+- **管理コマンド**: サーバーの設定や管理を行うためのコマンドです (`admin add`, `admin remove`, `admin list`)。
+- **ヘルプコマンド**: コマンドの使い方を表示します (`help`)。
+- **おみくじコマンド**: おみくじを引くことができます (`おみくじ`)。
+- **スキン取得コマンド**: Minecraft ユーザーのスキン情報を表示します (`get_skin`)。
+- **UUID コマンド**: UUID を生成または更新します (`uuid`)。
+- **グローバルBANコマンド**: ユーザーをグローバルBANします。
+- **その他**: リバーシゲーム (`reversi`)、AIとの対話 (`Gemini`) など。
+
+## 依存関係
 
 
+このプロジェクトは、以下の主要なライブラリに依存しています。
 
-### その他のユーティリティ
+- discord.js
+- node-fetch
+- inquirer
+- cli-table3
+- chalk
+- uuid
+- @google/generative-ai
 
-- **Database**
-  - JSONベースの軽量データベース
-  - 非同期処理対応
-  - バージョン管理とコンフリクト解決機能
+## 開発環境のセットアップ
 
-- **Port**
-  - ポート公開・管理ツール
-  - Discord Webhook連携機能
-  - マルチプラットフォーム対応
 
-- **GenScript**
-  - 複数のexeファイルやbatファイルを管理・実行するスクリプト生成ツール
-  - Windows/Linux/macOS向けスクリプト生成対応
-
-- **Task**
-  - タスクスケジューラ
-  - 定期実行タスクの管理
-  - コマンドの自動実行
-
-## インストール方法
-
-各ツールは個別にインストール可能です。必要なツールのディレクトリに移動して以下のコマンドを実行してください:
-
-```bash
-npm install
-```
-
-## ビルド方法
-
-各ツールは以下のコマンドでビルドできます:
-
-```bash
-npm run auto  # 全プラットフォーム向けにビルド
-```
-
-または個別のプラットフォーム向けにビルド:
-
-```bash
-npm run windows-64  # Windows向け
-npm run linux      # Linux向け
-npm run macOS-64   # macOS向け
-```
-
-## 必要要件
-
-- Node.js
-- bun
-- TypeScript
-
-## ライセンス
-
-MIT License
-
-## 作者
-
-Koukunn_
+1.  Node.js をインストールします。
+2.  必要な依存関係をインストールします: `npm install`
+3.  設定ファイル (`config.json`) を作成し、Discord Bot のトークンを設定します。
 
 ## 貢献
 
-Issue、PR歓迎です。
+
+バグ報告や機能要望は、GitHub の Issue で受け付けています。プルリクエストも歓迎します。
+
+## ライセンス
 
 
+このプロジェクトは MIT ライセンスの下で公開されています。詳細については、[LICENSE](LICENSE) ファイルを参照してください。
+
+## 免責事項
 
 
-CLASS_NAMES = ["human", "bot", "redstone", "emerald", "diamond", "iron", "entity"]
+このツールは現状のまま提供され、いかなる種類の保証もありません。開発者は、このツールの使用によって生じたいかなる損害についても責任を負いません。Discord の利用規約および開発者ポリシーを遵守してください。

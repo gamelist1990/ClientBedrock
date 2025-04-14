@@ -7,8 +7,11 @@ import './gasdb/index' // 2025/4/03
 import './Game/Osero/index' // 2025/4/06
 import './Game/Omikuji/index'
 import './Game/OXGame'
+import './Auth'
 
 
 import './Other/yajyu'
 import './Other/AI'
 import './Other/uuid'
+import './Other/hive'
+import './Other/ban'
