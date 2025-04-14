@@ -3,6 +3,7 @@ pycryptodome
 curl_cffi>=0.6.2
 aiohttp
 certifi
+httpx
 browser_cookie3
 duckduckgo-search>=5.0
 nest_asyncio
@@ -20,3 +21,4 @@ nodriver
 python-multipart
 pypdf2
 python-docx
+markdown
