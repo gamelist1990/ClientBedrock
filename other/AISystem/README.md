@@ -1,51 +1,83 @@
-# API リファレンス
+# API リファレンス (v1.2.2)
 
-このドキュメントは、`g4f` ライブラリを利用して様々な AI プロバイダーと対話するためのバックエンド API サーバーの仕様を記述します。
+このドキュメントは、`g4f` ライブラリを利用して様々な AI プロバイダーと対話するためのバックエンド API サーバー (バージョン 1.2.2) の仕様を記述します。
 
 **ベース URL:** `http://<サーバーアドレス>:<ポート>` (デフォルト: `http://127.0.0.1:9002`)
 
-## 1. 利用可能なプロバイダーリストの取得
+## 1. 利用可能な識別子リストの取得
 
-利用可能な AI プロバイダーの識別子リストを取得します。
+利用可能な AI プロバイダーまたはモデルの識別子リストを取得します。
 
 **エンドポイント:** `/models`
 
 **メソッド:** `POST`
 
-**リクエストボディ (JSON):**
+### リクエストボディ (JSON):
 
 ```json
 {
-  "filter": "string (optional, 現在未使用)"
+  "type": "string (optional, default: 'provider')",
+  "filter": "string (optional)"
 }
 ```
 
-- `filter`: 現在のバージョンではこのフィールドは使用されていません。空の JSON `{}` を送信してください。
+- `type`: 取得する識別子の種類を指定します。
+  - `"provider"` (デフォルト): 利用可能なプロバイダー名のリストを返します。
+  - `"model"`: 利用可能なモデル名のリストを返します。
+- `filter`: 指定した場合、識別子リストを部分一致 (大文字小文字を区別しない) でフィルタリングします。
 
-**成功レスポンス (200 OK):**
-
-- Content-Type: `application/json`
-- ボディ: 利用可能なプロバイダー名の文字列リスト。
-
-```json
-["Grok", "Llama", "Mixtral", "..."]
-```
-
-**エラーレスポンス (500 Internal Server Error):**
+### 成功レスポンス (200 OK):
 
 - Content-Type: `application/json`
-- ボディ: プロバイダーリストの取得に失敗した場合。
+- ボディ: `type` で指定された種類の識別子の文字列リスト。
 
 ```json
-{
-  "detail": "g4fからプロバイダーリストを取得できませんでした。"
-}
+// type="provider" の場合
+["Grok", "Llama", "Mixtral", "Gemini", ...]
+
+// type="model" の場合
+["grok-3", "llama-3-70b", "gemini-1.5-flash", ...]
 ```
 
-**cURL 例:**
+### エラーレスポンス:
+
+- **400 Bad Request:**
+
+  ```json
+  {
+    "detail": "無効な type '<指定されたtype>' です。有効な type は 'provider' または 'model' です。"
+  }
+  ```
+
+- **500 Internal Server Error:**
+
+  ```json
+  {
+    "detail": "g4fから<type>リストを取得できませんでした: <元のエラー詳細>"
+  }
+  ```
+
+- **503 Service Unavailable:**
+  ```json
+  {
+    "detail": "g4fから<type>リストを取得できませんでした。"
+  }
+  ```
+
+### cURL 例:
 
 ```bash
+# プロバイダーリスト取得 (デフォルト)
 curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{}'
+
+# モデルリスト取得
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "model"}'
+
+# "gpt" を含むプロバイダーリスト取得
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "provider", "filter": "gpt"}'
+
+# "llama" を含むモデルリスト取得
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "model", "filter": "llama"}'
 ```
 
 ## 2. AI とのチャット
@@ -223,4 +255,3 @@ chatWithAI("Grok", "grok-3", "こんにちは")
   .then(console.log)
   .catch(console.error);
 ```
-
