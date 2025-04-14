@@ -187,3 +187,36 @@ Content-Type: text/event-stream
   ```
 
   (`--no-buffer` オプションは、curl がレスポンスをバッファリングせず、受信次第表示するために推奨されます)
+## 3. JavaScript での利用例
+
+### 非ストリーミング
+
+```javascript
+async function chatWithAI(providerName, model, message) {
+  const response = await fetch('http://127.0.0.1:9002/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      provider_name: providerName,
+      model: model,
+      message: message,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'An error occurred');
+  }
+
+  const data = await response.json();
+  return data.response;
+}
+
+// 使用例
+chatWithAI('Grok', 'grok-3', 'こんにちは').then(console.log).catch(console.error);
+```
+
+### ストリーミング
