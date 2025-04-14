@@ -1,7 +1,7 @@
 import asyncio
 import os
 from Module.g4f.client import Client
-from Module.g4f.Provider import Gemini
+from Module.g4f.Provider import Gemini,HuggingChat
 import Module.g4f.debug
 from Module.g4f.cookies import set_cookies_dir, read_cookie_files
 
@@ -12,14 +12,12 @@ set_cookies_dir(cookies_dir)
 read_cookie_files(cookies_dir)
 
 def main():
-    client = Client(
-        provider=Gemini
-    )
+    client = Client(provider=HuggingChat)
     response = client.chat.completions.create(
-        model=Module.g4f.models.gemini_2_0_flash,
-        messages=[{"role": "user", "content": "こんにちは！今話題のXについて教えてください。！！"}],
+        model=Module.g4f.models.command_r_plus,
+        messages=[{"role": "user", "content": "こんにちは"}],
     )
-    
+
     print(response.choices[0].message.content)
 
 main()
