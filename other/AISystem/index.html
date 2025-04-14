@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API リファレンス (v1.2.2)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            /* 明るい背景色 */
+            color: #333;
+            line-height: 1.6;
+            transition: background-color 0.3s ease;
+            /* 背景色のスムーズな変化 */
+        }
+
+        .container {
+            width: 85%;
+            /* 幅を少し広げる */
+            max-width: 1200px;
+            /* 最大幅を設定 */
+            margin: 20px auto;
+            padding: 30px;
+            background-color: #fff;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            /* より強い影 */
+            border-radius: 10px;
+            /* 角を丸くする */
+            transition: box-shadow 0.3s ease;
+            /* 影のスムーズな変化 */
+        }
+
+        .container:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            /* ホバー時の影の変化 */
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #007bff;
+            /* 青系の色に変更 */
+            margin-top: 25px;
+            margin-bottom: 15px;
+            transition: color 0.3s ease;
+            /* 色のスムーズな変化 */
+        }
+
+        h1:hover,
+        h2:hover,
+        h3:hover,
+        h4:hover {
+            color: #0056b3;
+            /* ホバー時の色の変化 */
+        }
+
+        h1 {
+            border-bottom: 3px solid #007bff;
+            /* 下線を太くする */
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            /* サイズを大きく */
+        }
+
+        code {
+            background-color: #e9ecef;
+            /* より薄い背景色 */
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        ul {
+            list-style-type: square;
+            padding-left: 25px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        strong {
+            color: #007bff;
+            /* 強調色 */
+        }
+
+        p {
+            margin-bottom: 20px;
+            color: #555;
+            /* テキストの色を少し薄く */
+        }
+
+        /* アニメーション */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>API リファレンス (v1.2.2)</h1>
+        <p>このドキュメントは、<code>g4f</code> ライブラリを利用して様々な AI プロバイダーと対話するためのバックエンド API サーバー (バージョン 1.2.2) の仕様を記述します。</p>
+        <p><strong>ベース URL:</strong> <code>http://&lt;サーバーアドレス&gt;:&lt;ポート&gt;</code> (デフォルト:
+            <code>http://127.0.0.1:9002</code>)
+        </p>
+
+        <h2>1. 利用可能な識別子リストの取得</h2>
+        <p>利用可能な AI プロバイダーまたはモデルの識別子リストを取得します。</p>
+        <p><strong>エンドポイント:</strong> <code>/models</code></p>
+        <p><strong>メソッド:</strong> <code>POST</code></p>
+        <h3>リクエストボディ (JSON):</h3>
+        <pre><code>
+{
+  "type": "string (optional, default: 'provider')",
+  "filter": "string (optional)"
+}
+        </code></pre>
+        <ul>
+            <li><code>type</code>: 取得する識別子の種類を指定します。
+                <ul>
+                    <li><code>"provider"</code> (デフォルト): 利用可能なプロバイダー名のリストを返します。</li>
+                    <li><code>"model"</code>: 利用可能なモデル名のリストを返します。</li>
+                </ul>
+            </li>
+            <li><code>filter</code>: 指定した場合、識別子リストを部分一致 (大文字小文字を区別しない) でフィルタリングします。</li>
+        </ul>
+        <h3>成功レスポンス (200 OK):</h3>
+        <ul>
+            <li>Content-Type: <code>application/json</code></li>
+            <li>ボディ: <code>type</code> で指定された種類の識別子 (プロバイダー名またはモデル名) の文字列リスト。<code>filter</code> が指定されていればフィルタリング後のリスト。
+            </li>
+        </ul>
+        <pre><code>
+// type="provider" の場合
+["Grok", "Llama", "Mixtral", "Gemini", ...]
+
+// type="model" の場合
+["grok-3", "llama-3-70b", "gemini-1.5-flash", ...]
+        </code></pre>
+        <h3>エラーレスポンス:</h3>
+        <ul>
+            <li><strong>400 Bad Request:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: <code>type</code> パラメータに無効な値 (<code>"provider"</code> または <code>"model"</code> 以外)
+                        が指定された場合。</li>
+                </ul>
+                <pre><code>
+{
+  "detail": "無効な type '&lt;指定されたtype&gt;' です。有効な type は 'provider' または 'model' です。"
+}
+                </code></pre>
+            </li>
+            <li><strong>500 Internal Server Error:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: サーバー内部でリストの取得に失敗した場合。</li>
+                </ul><pre><code>
+{
+  "detail": "g4fから&lt;type&gt;リストを取得できませんでした: &lt;元のエラー詳細&gt;"
+}
+                </code></pre>
+            </li>
+            <li><strong>503 Service Unavailable:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: サーバーが一時的に過負荷状態であるか、メンテナンス中の場合。</li>
+                </ul>
+
+                <pre><code>
+{
+  "detail": "g4fから&lt;type&gt;リストを取得できませんでした。"
+}
+                </code></pre>
+            </li>
+        </ul>
+        <h3>cURL 例:</h3>
+        <ul>
+            <li><strong>プロバイダーリスト取得 (デフォルト):</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{}'
+                </code></pre>
+            </li>
+            <li><strong>モデルリスト取得:</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "model"}'
+                </code></pre>
+            </li>
+            <li><strong>"gpt" を含むプロバイダーリスト取得:</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "provider", "filter": "gpt"}'
+                </code></pre>
+            </li>
+            <li><strong>"llama" を含むモデルリスト取得:</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "model", "filter": "llama"}'
+                </code></pre>
+            </li>
+        </ul>
+
+        <h2>2. AI とのチャット</h2>
+        <p>指定したプロバイダーとモデルを使用して AI と対話します。プロバイダー名を省略した場合は、<code>g4f</code> のデフォルトプロバイダーが使用されます。通常の JSON
+            レスポンスと、Server-Sent Events (SSE) によるストリーミングレスポンスをサポートします。</p>
+        <p><strong>エンドポイント:</strong> <code>/chat</code></p>
+        <p><strong>メソッド:</strong> <code>POST</code></p>
+        <h3>リクエストボディ (JSON):</h3>
+        <pre><code>
+{
+  "provider_name": "string | null (optional)",
+  "model": "string (必須)",
+  "message": "string (必須)",
+  "auth_key": "string (optional, 現在未使用)",
+  "stream": "boolean (optional, default: false)"
+}
+        </code></pre>
+        <ul>
+            <li><code>provider_name</code>: 使用する AI プロバイダーの識別子 (例: <code>"Gemini"</code>)。<code>/models</code> エンドポイント
+                (<code>type="provider"</code>) で取得した名前を指定します。<strong>省略 (<code>null</code> または未指定) した場合、<code>g4f</code>
+                    のデフォルトプロバイダーが使用されます。</strong></li>
+            <li><code>model</code>: 使用するモデル名 (例: <code>"gemini-1.5-flash"</code> や <code>"gpt-4o-mini"</code>
+                など、プロバイダーがサポートするモデル識別子)。空文字列 <code>""</code> を指定すると、プロバイダーのデフォルトモデルが使用される場合があります。</li>
+            <li><code>message</code>: AI に送信するユーザーメッセージ。</li>
+            <li><code>auth_key</code>: 認証キー（現在のバージョンでは使用されていません）。</li>
+            <li><code>stream</code>: <code>true</code> に設定するとレスポンスがストリーミング (SSE) 形式になります。<code>false</code>
+                または未指定の場合は、完了後に全レスポンスが JSON で返されます。</li>
+        </ul>
+        <h3>成功レスポンス (200 OK, stream=false):</h3>
+        <ul>
+            <li>Content-Type: <code>application/json</code></li>
+            <li>ボディ: AI からの完全な応答を含む JSON オブジェクト。</li>
+        </ul>
+        <pre><code>
+{
+  "response": "AI からの応答テキストです。"
+}
+        </code></pre>
+        <h3>成功レスポンス (200 OK, stream=true):</h3>
+        <ul>
+            <li>Content-Type: <code>text/event-stream</code></li>
+            <li>ボディ: Server-Sent Events のストリーム。</li>
+        </ul>
+        <ul>
+            <li>メッセージチャンク:
+                <pre><code>
+data: {"delta": "応答の一部"}
+
+data: {"delta": "次の応答部分"}
+
+...
+                </code></pre>
+            </li>
+            <li>ストリーム終了:
+                <pre><code>
+data: {"end_of_stream": true}
+                </code></pre>
+            </li>
+            <li>ストリーミング中のエラー:
+                <pre><code>
+event: error
+data: {"error": "エラーメッセージ", "provider": "プロバイダー名またはNone", "model": "モデル名"}
+                </code></pre>
+                <p>(注意: ストリーミング中のエラー発生時、HTTP ステータスコードは 200 のままです)</p>
+            </li>
+        </ul>
+        <h3>エラーレスポンス (非ストリーミング時):</h3>
+        <ul>
+            <li><strong>400 Bad Request:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: 指定された <code>provider_name</code> が存在しないプロバイダー名の場合。</li>
+                </ul>
+                <pre><code>
+{
+  "detail": "指定されたProvider名 '&lt;無効な名前&gt;' は無効です。利用可能なProvider: ['Grok', 'Llama', ...]"
+}
+                </code></pre>
+            </li>
+            <li><strong>404 Not Found:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: プロバイダーは存在するが、指定された <code>model</code> がプロバイダー内部で見つからないかサポートされていない場合 (<code>g4f</code>ライブラリの
+                        <code>ProviderNotFoundError</code> に起因)。
+                    </li>
+                </ul>
+                <pre><code>
+{
+  "detail": "プロバイダー内部でモデルが見つからないか、サポートされていません: &lt;元のエラー詳細&gt;"
+}
+                </code></pre>
+            </li>
+            <li><strong>500 Internal Server Error:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: AI プロバイダーから有効な応答コンテンツが得られなかった場合 (例: レスポンス形式が予期しないものだった場合)。</li>
+                </ul>
+                <pre><code>
+{
+  "detail": "AIプロバイダーから有効な応答コンテンツを取得できませんでした。"
+}
+                </code></pre>
+            </li>
+            <li><strong>503 Service Unavailable:</strong>
+                <ul>
+                    <li>Content-Type: <code>application/json</code></li>
+                    <li>ボディ: AI プロバイダーサービス自体への接続に失敗した場合、または通信中に予期せぬエラーが発生した場合 (<code>ProviderNotFoundError</code> 以外)。
+                    </li>
+                </ul>
+                <pre><code>
+{
+  "detail": "AIプロバイダーサービスが利用不可か、エラーが発生しました: &lt;元のエラー詳細&gt;"
+}
+                </code></pre>
+            </li>
+        </ul>
+        <h3>cURL 例:</h3>
+        <ul>
+            <li><strong>非ストリーミング (プロバイダー指定):</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+        "provider_name": "Gemini",
+        "model": "gemini-1.5-flash",
+        "message": "日本の首都はどこですか？",
+        "stream": false
+      }'
+                </code></pre>
+            </li>
+            <li><strong>非ストリーミング (プロバイダー指定なし - デフォルト使用):</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+        "provider_name": null,
+        "model": "gpt-4o-mini",
+        "message": "デフォルトプロバイダーで応答してください。",
+        "stream": false
+      }'
+                </code></pre>
+            </li>
+            <li><strong>ストリーミング (プロバイダー指定):</strong>
+                <pre><code>
+curl -X POST http://127.0.0.1:9002/chat \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+        "provider_name": "Gemini",
+        "model": "gemini-1.5-flash",
+        "message": "自己紹介をしてください。",
+        "stream": true
+      }' --no-buffer
+                </code></pre>
+                <p>(<code>--no-buffer</code> オプションは、curl がレスポンスをバッファリングせず、受信次第表示するために推奨されます)</p>
+            </li>
+        </ul>
+
+        <h2>3. サンプルコード</h2>
+
+        <h3>JavaScript での利用例</h3>
+
+        <h4>非ストリーミング</h4>
+        <pre><code>
+async function chatWithAI(providerName, model, message) {
+  const apiUrl = "http://127.0.0.1:9002/chat";
+  const payload = {
+    provider_name: providerName, // null or provider name string
+    model: model,
+    message: message,
+    stream: false,
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      // Try to parse error detail from JSON response
+      let errorDetail = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || JSON.stringify(errorData);
+      } catch (e) {
+        // If response is not JSON, use text
+        errorDetail = await response.text();
+      }
+      throw new Error(errorDetail);
+    }
+
+    const data = await response.json();
+    return data.response;
+
+  } catch (error) {
+    console.error("Error during chat request:", error);
+    throw error; // Re-throw the error for further handling
+  }
+}
+
+// 使用例 1: プロバイダー指定
+chatWithAI("Gemini", "gemini-1.5-flash", "こんにちは")
+  .then(response => console.log("AI Response (Gemini):", response))
+  .catch(error => console.error("Error (Gemini):", error.message));
+
+// 使用例 2: プロバイダー指定なし (デフォルトを使用)
+chatWithAI(null, "gpt-4o-mini", "デフォルトプロバイダーで挨拶して")
+  .then(response => console.log("AI Response (Default):", response))
+  .catch(error => console.error("Error (Default):", error.message));
+        </code></pre>
+
+        <h4>ストリーミング</h4>
+        <pre><code>
+async function chatWithAIStream(providerName, model, message, onDelta, onEnd, onError) {
+  const apiUrl = "http://127.0.0.1:9002/chat";
+  const payload = {
+    provider_name: providerName, // null or provider name string
+    model: model,
+    message: message,
+    stream: true,
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream" // Important for SSE
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // Check for non-2xx status codes before attempting to read the stream
+    if (!response.ok) {
+      let errorDetail = `HTTP error! status: ${response.status}`;
+       try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || JSON.stringify(errorData);
+      } catch (e) {
+        errorDetail = await response.text();
+      }
+      throw new Error(errorDetail);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        console.log("Stream finished.");
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n'); // SSE messages are separated by double newlines
+      buffer = lines.pop(); // Keep the last (potentially incomplete) message in the buffer
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const dataStr = line.substring(6); // Remove 'data: ' prefix
+          try {
+            const data = JSON.parse(dataStr);
+            if (data.delta) {
+              if (onDelta) onDelta(data.delta);
+            } else if (data.end_of_stream) {
+              if (onEnd) onEnd();
+              return; // End the loop gracefully
+            }
+          } catch (e) {
+            console.error("Failed to parse SSE data:", dataStr, e);
+          }
+        } else if (line.startsWith('event: error')) {
+           const dataLine = lines.find(l => l.startsWith('data: '));
+           if (dataLine) {
+               const errorDataStr = dataLine.substring(6);
+               try {
+                   const errorData = JSON.parse(errorDataStr);
+                   if (onError) onError(errorData);
+               } catch (e) {
+                   console.error("Failed to parse SSE error data:", errorDataStr, e);
+                   if (onError) onError({ error: "Failed to parse error data", raw: errorDataStr });
+               }
+           } else {
+               if (onError) onError({ error: "Received error event without data" });
+           }
+           return; // Stop processing on error event
+        }
+      }
+    }
+     // Process any remaining buffer content if needed, though usually handled by end_of_stream
+     if (buffer.startsWith('data: ')) {
+         // Handle potential final chunk if stream ends without double newline
+     }
+
+  } catch (error) {
+    console.error("Error during streaming chat request:", error);
+    if (onError) onError({ error: error.message });
+  }
+}
+
+// 使用例:
+let fullResponse = "";
+chatWithAIStream(
+  "Gemini", // または null
+  "gemini-1.5-flash", // または "gpt-4o-mini" など
+  "自己紹介をしてください。",
+  (delta) => {
+    console.log("Delta:", delta);
+    fullResponse += delta;
+    // ここでUIを更新するなど
+  },
+  () => {
+    console.log("Stream ended. Full response:", fullResponse);
+  },
+  (errorData) => {
+    console.error("Stream Error:", errorData);
+  }
+);
+        </code></pre>
+
+        <h3>Python での利用例</h3>
+
+        <h4>非ストリーミング</h4>
+        <pre><code>
+import requests
+import json
+from typing import Optional
+
+def chat_with_ai(provider_name: Optional[str], model: str, message: str):
+    url = "http://127.0.0.1:9002/chat"
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "provider_name": provider_name, # None or provider name string
+        "model": model,
+        "message": message,
+        "stream": False
+    }
+    try:
+        response = requests.post(url, headers=headers, json=data) # Use json parameter for automatic serialization
+        response.raise_for_status() # Raises HTTPError for 4xx/5xx status codes
+        return response.json()['response']
+    except requests.exceptions.RequestException as e:
+        # Handle connection errors, timeouts, etc.
+        print(f"Request failed: {e}")
+        # Try to get more details from the response if available
+        if e.response is not None:
+            try:
+                print(f"Error response: {e.response.json()}")
+            except json.JSONDecodeError:
+                print(f"Error response (text): {e.response.text}")
+        return None # Or re-raise a custom exception
+    except KeyError:
+        print(f"Error: 'response' key not found in the JSON response.")
+        print(f"Received JSON: {response.json()}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
+
+
+# 使用例 1: プロバイダー指定
+try:
+    response = chat_with_ai("Gemini", "gemini-1.5-flash", "こんにちは")
+    if response:
+        print("AI Response (Gemini):", response)
+except Exception as e:
+    print(f"An error occurred (Gemini): {e}")
+
+# 使用例 2: プロバイダー指定なし (デフォルトを使用)
+try:
+    # gpt-4o-mini はデフォルトプロバイダーで使えると仮定
+    response = chat_with_ai(None, "gpt-4o-mini", "デフォルトプロバイダーで挨拶して")
+    if response:
+        print("AI Response (Default):", response)
+except Exception as e:
+    print(f"An error occurred (Default): {e}")
+        </code></pre>
+
+        <h4>ストリーミング</h4>
+        <pre><code>
+import requests
+import json
+import sseclient # Requires: pip install sseclient-py
+from typing import Optional
+
+def chat_with_ai_stream(provider_name: Optional[str], model: str, message: str):
+    url = "http://127.0.0.1:9002/chat"
+    headers = {'Content-Type': 'application/json', 'Accept': 'text/event-stream'}
+    data = {
+        "provider_name": provider_name, # None or provider name string
+        "model": model,
+        "message": message,
+        "stream": True
+    }
+    try:
+        response = requests.post(url, headers=headers, json=data, stream=True)
+        response.raise_for_status() # Check for 4xx/5xx errors before processing stream
+
+        client = sseclient.SSEClient(response)
+        full_response_text = ""
+
+        for event in client.events():
+            # Check for custom error event first
+            if event.event == 'error':
+                try:
+                    error_data = json.loads(event.data)
+                    print(f"\n--- Stream Error Received ---")
+                    print(f"Error: {error_data.get('error', 'Unknown error')}")
+                    print(f"Provider: {error_data.get('provider', 'N/A')}")
+                    print(f"Model: {error_data.get('model', 'N/A')}")
+                    print(f"-----------------------------")
+                    # Depending on the error, you might want to stop processing
+                    return None # Or raise an exception
+                except json.JSONDecodeError:
+                    print(f"\n--- Stream Error Received (Undecodable) ---")
+                    print(f"Raw data: {event.data}")
+                    print(f"------------------------------------------")
+                    return None
+
+            # Process regular data events (default event type is 'message')
+            if event.data:
+                try:
+                    data_dict = json.loads(event.data)
+                    if 'delta' in data_dict:
+                        delta = data_dict['delta']
+                        print(delta, end='', flush=True) # Print delta immediately
+                        full_response_text += delta
+                    elif 'end_of_stream' in data_dict and data_dict['end_of_stream']:
+                        print("\n--- End of Stream ---")
+                        break # Exit the loop gracefully
+                except json.JSONDecodeError:
+                    print(f"\nWarning: Received non-JSON data: {event.data}")
+                except Exception as e:
+                    print(f"\nError processing stream data: {e}")
+                    print(f"Data received: {event.data}")
+
+        return full_response_text # Return the complete text after streaming
+
+    except requests.exceptions.RequestException as e:
+        print(f"\nRequest failed: {e}")
+        if e.response is not None:
+             try:
+                print(f"Error response: {e.response.json()}")
+             except json.JSONDecodeError:
+                print(f"Error response (text): {e.response.text}")
+        return None
+    except Exception as e:
+        print(f"\nAn unexpected error occurred during streaming: {e}")
+        return None
+
+# 使用例 1: プロバイダー指定
+print("\n--- Streaming Chat (Gemini) ---")
+try:
+    full_response = chat_with_ai_stream("Gemini", "gemini-1.5-flash", "Pythonで簡単なWebサーバーを立てるコードを教えてください。")
+    # if full_response is not None:
+    #     print("\nFinal assembled response (Gemini):\n", full_response)
+except Exception as e:
+    print(f"\nAn error occurred (Gemini Stream): {e}")
+
+# 使用例 2: プロバイダー指定なし (デフォルトを使用)
+print("\n--- Streaming Chat (Default) ---")
+try:
+    # gpt-4o-mini はデフォルトプロバイダーで使えると仮定
+    full_response = chat_with_ai_stream(None, "gpt-4o-mini", "簡単な挨拶をストリーミングで返してください。")
+    # if full_response is not None:
+    #     print("\nFinal assembled response (Default):\n", full_response)
+except Exception as e:
+    print(f"\nAn error occurred (Default Stream): {e}")
+
+        </code></pre>
+    </div>
+</body>
+
+</html>

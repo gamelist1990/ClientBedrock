@@ -16,6 +16,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 try:
     from Module.g4f.client import Client
     from Module.g4f.Provider import ProviderUtils, BaseProvider
+    # Import Model from g4f
+    from Module.g4f import Model
     import Module.g4f.debug
     from Module.g4f.cookies import set_cookies_dir, read_cookie_files
     from Module.g4f.errors import ProviderNotFoundError
@@ -41,52 +43,66 @@ except Exception as e:
 app = FastAPI(
     title="g4f バックエンド API (Provider/Model分離版, Streaming対応)",
     description="Provider名とModel名を指定してg4f AIモデルと対話するAPIサーバー(ストリーミング対応)",
-    version="1.2.0",
+    version="1.2.2", # バージョンを更新 (機能追加のため)
 )
 
 # --- Define the URL for the README ---
-README_URL = "https://raw.githubusercontent.com/gamelist1990/ClientBedrock/refs/heads/main/other/AISystem/README.md"
+# 例: Markdownの場合
+# README_URL = "https://raw.githubusercontent.com/gamelist1990/ClientBedrock/refs/heads/main/other/AISystem/README.md"
+# 例: HTMLの場合 (テスト用に別のURLを指定する場合)
+README_URL = "https://raw.githubusercontent.com/gamelist1990/ClientBedrock/refs/heads/main/other/AISystem/index.html"
 
 
-# --- Add the new route for the root path ---
+# --- Modified route for the root path ---
 @app.get("/", response_class=HTMLResponse)
 async def get_readme():
     """
-    ルートパス(/)にアクセスした際にGitHubからREADME.mdを取得して
-    その内容をマークダウンとしてHTML表示します。
+    ルートパス(/)にアクセスした際に指定されたURLからコンテンツを取得します。
+    URLが.htmlで終わる場合はそのままHTMLとして、それ以外はMarkdownとして解釈しHTML表示します。
     """
     try:
         async with httpx.AsyncClient() as client:
-            print(f"Fetching README from: {README_URL}")
+            print(f"Fetching content from: {README_URL}")
             response = await client.get(README_URL)
-            response.raise_for_status()
-            print("README fetched successfully.")
-            # Convert Markdown to HTML
-            html_content = markdown.markdown(response.text)
-            return HTMLResponse(content=html_content)
+            response.raise_for_status() # HTTPエラーがあれば例外を発生させる
+            content = response.text
+            print("Content fetched successfully.")
+
+            # URLの末尾をチェックして処理を分岐
+            if README_URL.lower().endswith(".html"):
+                print("URL ends with .html, returning content as HTML.")
+                # HTMLファイルの場合はそのまま返す
+                return HTMLResponse(content=content)
+            else:
+                print("URL does not end with .html, treating as Markdown.")
+                # それ以外の場合はMarkdownとしてHTMLに変換
+                html_content = markdown.markdown(content)
+                return HTMLResponse(content=html_content)
+
     except httpx.RequestError as exc:
-        print(f"Error while requesting README from {exc.request.url!r}: {exc}")
+        error_message = f"Error while requesting content from {exc.request.url!r}: {exc}"
+        print(error_message)
         raise HTTPException(
-            status_code=503,
-            detail="Could not fetch README from source (Request Error).",
+            status_code=503, # Service Unavailable
+            detail=f"Could not fetch content from source (Request Error): {README_URL}",
         )
     except httpx.HTTPStatusError as exc:
-        print(
-            f"Error response {exc.response.status_code} while requesting README from {exc.request.url!r}."
-        )
+        error_message = f"Error response {exc.response.status_code} while requesting content from {exc.request.url!r}."
+        print(error_message)
         raise HTTPException(
-            status_code=502,
-            detail=f"Could not fetch README from source (Status: {exc.response.status_code}).",
+            status_code=502, # Bad Gateway (or use exc.response.status_code if appropriate)
+            detail=f"Could not fetch content from source (Status: {exc.response.status_code}): {README_URL}",
         )
     except Exception as e:
-        print(f"An unexpected error occurred while fetching README: {e}")
+        error_message = f"An unexpected error occurred while fetching content: {e}"
+        print(error_message)
         traceback.print_exc()
         raise HTTPException(
-            status_code=500, detail="Internal server error while fetching README."
+            status_code=500, detail=f"Internal server error while fetching content from {README_URL}."
         )
 
 
-# --- Existing Pydantic Models ---
+# --- Modified Pydantic Models ---
 class ChatRequest(BaseModel):
     provider_name: Optional[str] = None
     model: str
@@ -97,6 +113,8 @@ class ChatRequest(BaseModel):
 
 class ModelListRequest(BaseModel):
     filter: Optional[str] = None
+    # Add 'type' field, default to 'provider'
+    type: Optional[str] = "provider"
 
 
 # --- Existing Helper Functions ---
@@ -174,23 +192,54 @@ async def stream_response_generator(
         yield f"event: error\ndata: {error_payload}\n\n"
 
 
-# --- Existing API Endpoints ---
+# --- Modified API Endpoints ---
 @app.post("/models", response_model=List[str])
-async def get_available_models(request_body: ModelListRequest):
-    """利用可能なプロバイダー識別子のリストを返します。"""
+async def get_available_identifiers(request_body: ModelListRequest):
+    """
+    利用可能な識別子のリストを返します。
+    リクエストボディの type パラメータに応じて、プロバイダー ('provider') またはモデル ('model') のリストを返します。
+    デフォルトは 'provider' です。filter パラメータで結果をフィルタリングできます。
+    """
     try:
-        # Filter logic can be added here based on request_body.filter if needed
-        available = list(ProviderUtils.convert.keys())
+        identifier_type = request_body.type
+        available: List[str] = [] # Initialize available list
+
+        if identifier_type == "provider":
+            available = list(ProviderUtils.convert.keys())
+            print("プロバイダーリストを取得しました。")
+        elif identifier_type == "model":
+            # Use the imported Model class and call its __all__ method
+            available = Model.__all__()
+            print("モデルリストを取得しました。")
+        else:
+            # Invalid type
+            raise HTTPException(
+                status_code=400, # Bad Request for invalid type
+                detail=f"無効な type '{identifier_type}' です。有効な type は 'provider' または 'model' です。"
+            )
+
+        # Apply filter if provided
         if request_body.filter:
+            print(f"フィルター '{request_body.filter}' を適用します...")
             # Simple case-insensitive substring filter
+            original_count = len(available)
             available = [
-                p for p in available if request_body.filter.lower() in p.lower()
+                item for item in available if request_body.filter.lower() in item.lower()
             ]
+            print(f"フィルター適用後: {original_count}件 -> {len(available)}件")
+
         return available
+
+    except HTTPException:
+         # Re-raise HTTPException directly to preserve status code and detail
+         raise
     except Exception as e:
-        print(f"モデルリスト(プロバイダーリスト)の取得中にエラーが発生しました: {e}")
+        # Use requested type in error message, default to 'unknown' if request_body is None
+        error_type = request_body.type if request_body else 'unknown'
+        print(f"{error_type}リストの取得中に予期せぬエラーが発生しました: {e}")
+        traceback.print_exc() # Add traceback for better debugging
         raise HTTPException(
-            status_code=500, detail="g4fからプロバイダーリストを取得できませんでした。"
+            status_code=500, detail=f"g4fから{error_type}リストを取得できませんでした。"
         )
 
 

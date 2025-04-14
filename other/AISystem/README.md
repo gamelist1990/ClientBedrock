@@ -2,15 +2,17 @@
 
 このドキュメントは、`g4f` ライブラリを利用して様々な AI プロバイダーと対話するためのバックエンド API サーバーの仕様を記述します。
 
-ベース URL: http://<サーバーアドレス>:<ポート> (デフォルト: http://127.0.0.1:9002)
+**ベース URL:** `http://<サーバーアドレス>:<ポート>` (デフォルト: `http://127.0.0.1:9002`)
 
 ## 1. 利用可能なプロバイダーリストの取得
 
 利用可能な AI プロバイダーの識別子リストを取得します。
 
-エンドポイント: /models
-メソッド: POST
-リクエストボディ (JSON):
+**エンドポイント:** `/models`
+
+**メソッド:** `POST`
+
+**リクエストボディ (JSON):**
 
 ```json
 {
@@ -187,16 +189,17 @@ Content-Type: text/event-stream
   ```
 
   (`--no-buffer` オプションは、curl がレスポンスをバッファリングせず、受信次第表示するために推奨されます)
+
 ## 3. JavaScript での利用例
 
 ### 非ストリーミング
 
 ```javascript
 async function chatWithAI(providerName, model, message) {
-  const response = await fetch('http://127.0.0.1:9002/chat', {
-    method: 'POST',
+  const response = await fetch("http://127.0.0.1:9002/chat", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       provider_name: providerName,
@@ -208,7 +211,7 @@ async function chatWithAI(providerName, model, message) {
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.detail || 'An error occurred');
+    throw new Error(errorData.detail || "An error occurred");
   }
 
   const data = await response.json();
@@ -216,7 +219,8 @@ async function chatWithAI(providerName, model, message) {
 }
 
 // 使用例
-chatWithAI('Grok', 'grok-3', 'こんにちは').then(console.log).catch(console.error);
+chatWithAI("Grok", "grok-3", "こんにちは")
+  .then(console.log)
+  .catch(console.error);
 ```
 
-### ストリーミング
