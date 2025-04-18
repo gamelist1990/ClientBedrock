@@ -22,3 +22,4 @@ python-multipart
 pypdf2
 python-docx
 markdown
+gdown

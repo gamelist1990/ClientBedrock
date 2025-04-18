@@ -4,39 +4,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API リファレンス (v1.2.2)</title>
+    <title>API リファレンス (v1.4.2)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #f9f9f9;
-            /* 明るい背景色 */
             color: #333;
             line-height: 1.6;
             transition: background-color 0.3s ease;
-            /* 背景色のスムーズな変化 */
         }
 
         .container {
             width: 85%;
-            /* 幅を少し広げる */
             max-width: 1200px;
-            /* 最大幅を設定 */
             margin: 20px auto;
             padding: 30px;
             background-color: #fff;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            /* より強い影 */
             border-radius: 10px;
-            /* 角を丸くする */
             transition: box-shadow 0.3s ease;
-            /* 影のスムーズな変化 */
         }
 
         .container:hover {
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-            /* ホバー時の影の変化 */
         }
 
         h1,
@@ -44,11 +36,9 @@
         h3,
         h4 {
             color: #007bff;
-            /* 青系の色に変更 */
             margin-top: 25px;
             margin-bottom: 15px;
             transition: color 0.3s ease;
-            /* 色のスムーズな変化 */
         }
 
         h1:hover,
@@ -56,24 +46,21 @@
         h3:hover,
         h4:hover {
             color: #0056b3;
-            /* ホバー時の色の変化 */
         }
 
         h1 {
             border-bottom: 3px solid #007bff;
-            /* 下線を太くする */
             padding-bottom: 10px;
             margin-bottom: 30px;
             font-size: 2.5em;
-            /* サイズを大きく */
         }
 
         code {
             background-color: #e9ecef;
-            /* より薄い背景色 */
             padding: 3px 8px;
             border-radius: 5px;
             font-size: 0.9em;
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
         }
 
         pre {
@@ -97,20 +84,69 @@
 
         strong {
             color: #007bff;
-            /* 強調色 */
         }
 
         p {
             margin-bottom: 20px;
             color: #555;
-            /* テキストの色を少し薄く */
+        }
+
+        .endpoint-section {
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .endpoint-section:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25em 0.6em;
+            font-size: 75%;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0.375rem;
+            margin-left: 5px;
+        }
+
+        .badge-post {
+            color: #fff;
+            background-color: #28a745;
+            /* Green for POST */
+        }
+
+        .badge-get {
+            color: #fff;
+            background-color: #007bff;
+            /* Blue for GET */
+        }
+
+        .badge-optional {
+            color: #6c757d;
+            background-color: #e9ecef;
+        }
+
+        .badge-required {
+            color: #dc3545;
+            background-color: #f8d7da;
+        }
+
+        .badge-rate-limit {
+            color: #fff;
+            background-color: #ffc107;
+            /* Yellow/Orange for Rate Limit */
         }
 
         /* アニメーション */
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(-20px);
+                transform: translateY(-10px);
             }
 
             to {
@@ -133,254 +169,399 @@
             h1 {
                 font-size: 2em;
             }
+
+            h2 {
+                font-size: 1.5em;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>API リファレンス (v1.2.2)</h1>
-        <p>このドキュメントは、<code>g4f</code> ライブラリを利用して様々な AI プロバイダーと対話するためのバックエンド API サーバー (バージョン 1.2.2) の仕様を記述します。</p>
+        <h1>API リファレンス (v1.4.2)</h1>
+        <p>このドキュメントは、<code>g4f</code> ライブラリを利用して様々な AI プロバイダーとの対話や画像生成を行うためのバックエンド API サーバー (バージョン 1.4.2) の仕様を記述します。</p>
         <p><strong>ベース URL:</strong> <code>http://&lt;サーバーアドレス&gt;:&lt;ポート&gt;</code> (デフォルト:
-            <code>http://127.0.0.1:9002</code>)
-        </p>
+            <code>http://127.0.0.1:9002</code>)</p>
+        <p><strong>自動生成ドキュメント:</strong> より詳細な対話型ドキュメントが以下で利用可能です。</p>
+        <ul>
+            <li>Swagger UI: <a href="/docs" target="_blank"><code>/docs</code></a></li>
+            <li>ReDoc: <a href="/redoc" target="_blank"><code>/redoc</code></a></li>
+        </ul>
 
-        <h2>1. 利用可能な識別子リストの取得</h2>
-        <p>利用可能な AI プロバイダーまたはモデルの識別子リストを取得します。</p>
-        <p><strong>エンドポイント:</strong> <code>/models</code></p>
-        <p><strong>メソッド:</strong> <code>POST</code></p>
-        <h3>リクエストボディ (JSON):</h3>
-        <pre><code>
+        <div class="endpoint-section">
+            <h2>1. 利用可能な識別子リストの取得</h2>
+            <p>利用可能な AI プロバイダーまたはモデルの識別子リストを取得します。</p>
+            <p><strong>エンドポイント:</strong> <code>/models</code> <span class="badge badge-post">POST</span></p>
+            <h3>リクエストボディ (JSON):</h3>
+            <pre><code>
 {
-  "type": "string (optional, default: 'provider')",
-  "filter": "string (optional)"
+  "type": "string", <span class="badge badge-optional">Optional (default: 'provider')</span>
+  "filter": "string" <span class="badge badge-optional">Optional</span>
 }
-        </code></pre>
-        <ul>
-            <li><code>type</code>: 取得する識別子の種類を指定します。
-                <ul>
-                    <li><code>"provider"</code> (デフォルト): 利用可能なプロバイダー名のリストを返します。</li>
-                    <li><code>"model"</code>: 利用可能なモデル名のリストを返します。</li>
-                </ul>
-            </li>
-            <li><code>filter</code>: 指定した場合、識別子リストを部分一致 (大文字小文字を区別しない) でフィルタリングします。</li>
-        </ul>
-        <h3>成功レスポンス (200 OK):</h3>
-        <ul>
-            <li>Content-Type: <code>application/json</code></li>
-            <li>ボディ: <code>type</code> で指定された種類の識別子 (プロバイダー名またはモデル名) の文字列リスト。<code>filter</code> が指定されていればフィルタリング後のリスト。
-            </li>
-        </ul>
-        <pre><code>
+            </code></pre>
+            <ul>
+                <li><code>type</code>: 取得する識別子の種類を指定します。
+                    <ul>
+                        <li><code>"provider"</code> (デフォルト): 利用可能なプロバイダー名のリストを返します。</li>
+                        <li><code>"model"</code>: 利用可能なモデル名のリストを返します。</li>
+                    </ul>
+                </li>
+                <li><code>filter</code>: 指定した場合、識別子リストを部分一致 (大文字小文字を区別しない) でフィルタリングします。</li>
+            </ul>
+            <h3>成功レスポンス (200 OK):</h3>
+            <ul>
+                <li>Content-Type: <code>application/json</code></li>
+                <li>ボディ: <code>type</code> で指定された種類の識別子 (プロバイダー名またはモデル名) の文字列リスト。<code>filter</code>
+                    が指定されていればフィルタリング後のリスト。</li>
+            </ul>
+            <pre><code>
 // type="provider" の場合
 ["Grok", "Llama", "Mixtral", "Gemini", ...]
 
 // type="model" の場合
 ["grok-3", "llama-3-70b", "gemini-1.5-flash", ...]
-        </code></pre>
-        <h3>エラーレスポンス:</h3>
-        <ul>
-            <li><strong>400 Bad Request:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: <code>type</code> パラメータに無効な値 (<code>"provider"</code> または <code>"model"</code> 以外)
-                        が指定された場合。</li>
-                </ul>
-                <pre><code>
+            </code></pre>
+            <h3>エラーレスポンス:</h3>
+            <ul>
+                <li><strong>400 Bad Request:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>ボディ: <code>type</code> パラメータに無効な値 (<code>"provider"</code> または <code>"model"</code> 以外)
+                            が指定された場合。</li>
+                    </ul>
+                    <pre><code>
 {
   "detail": "無効な type '&lt;指定されたtype&gt;' です。有効な type は 'provider' または 'model' です。"
 }
-                </code></pre>
-            </li>
-            <li><strong>500 Internal Server Error:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: サーバー内部でリストの取得に失敗した場合。</li>
-                </ul><pre><code>
-{
-  "detail": "g4fから&lt;type&gt;リストを取得できませんでした: &lt;元のエラー詳細&gt;"
-}
-                </code></pre>
-            </li>
-            <li><strong>503 Service Unavailable:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: サーバーが一時的に過負荷状態であるか、メンテナンス中の場合。</li>
-                </ul>
-
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li><strong>500 Internal Server Error:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>ボディ: サーバー内部でリストの取得に失敗した場合。</li>
+                    </ul>
+                    <pre><code>
 {
   "detail": "g4fから&lt;type&gt;リストを取得できませんでした。"
 }
-                </code></pre>
-            </li>
-        </ul>
-        <h3>cURL 例:</h3>
-        <ul>
-            <li><strong>プロバイダーリスト取得 (デフォルト):</strong>
-                <pre><code>
+                    </code></pre>
+                </li>
+            </ul>
+            <h3>cURL 例:</h3>
+            <ul>
+                <li><strong>プロバイダーリスト取得 (デフォルト):</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{}'
-                </code></pre>
-            </li>
-            <li><strong>モデルリスト取得:</strong>
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li><strong>モデルリスト取得:</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "model"}'
-                </code></pre>
-            </li>
-            <li><strong>"gpt" を含むプロバイダーリスト取得:</strong>
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li><strong>"gpt" を含むプロバイダーリスト取得:</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "provider", "filter": "gpt"}'
-                </code></pre>
-            </li>
-            <li><strong>"llama" を含むモデルリスト取得:</strong>
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li><strong>"llama" を含むモデルリスト取得:</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/models -H "Content-Type: application/json" -d '{"type": "model", "filter": "llama"}'
-                </code></pre>
-            </li>
-        </ul>
+                    </code></pre>
+                </li>
+            </ul>
+        </div>
 
-        <h2>2. AI とのチャット</h2>
-        <p>指定したプロバイダーとモデルを使用して AI と対話します。プロバイダー名を省略した場合は、<code>g4f</code> のデフォルトプロバイダーが使用されます。通常の JSON
-            レスポンスと、Server-Sent Events (SSE) によるストリーミングレスポンスをサポートします。</p>
-        <p><strong>エンドポイント:</strong> <code>/chat</code></p>
-        <p><strong>メソッド:</strong> <code>POST</code></p>
-        <h3>リクエストボディ (JSON):</h3>
-        <pre><code>
+        <div class="endpoint-section">
+            <h2>2. AI との対話 / 画像生成</h2>
+            <p>指定したプロバイダーとモデルを使用して AI と対話、または画像を生成します。<code>type</code> パラメータで動作を切り替えます。</p>
+            <p><strong>エンドポイント:</strong> <code>/chat</code> <span class="badge badge-post">POST</span></p>
+            <h3>リクエストボディ (JSON):</h3>
+            <pre><code>
 {
-  "provider_name": "string | null (optional)",
-  "model": "string (必須)",
-  "message": "string (必須)",
-  "auth_key": "string (optional, 現在未使用)",
-  "stream": "boolean (optional, default: false)"
+  "provider_name": "string | null", <span class="badge badge-optional">Optional</span>
+  "model": "string", <span class="badge badge-required">Required</span>
+  "message": "string", <span class="badge badge-required">Required (Prompt for chat/image)</span>
+  "api_key": "string | null", <span class="badge badge-optional">Optional</span>
+  "auth_key": "string | null", <span class="badge badge-optional">Optional (Currently unused)</span>
+  "stream": "boolean", <span class="badge badge-optional">Optional (default: false, for type='chat' only)</span>
+  "type": "string" <span class="badge badge-optional">Optional (default: 'chat')</span>
 }
-        </code></pre>
-        <ul>
-            <li><code>provider_name</code>: 使用する AI プロバイダーの識別子 (例: <code>"Gemini"</code>)。<code>/models</code> エンドポイント
-                (<code>type="provider"</code>) で取得した名前を指定します。<strong>省略 (<code>null</code> または未指定) した場合、<code>g4f</code>
-                    のデフォルトプロバイダーが使用されます。</strong></li>
-            <li><code>model</code>: 使用するモデル名 (例: <code>"gemini-1.5-flash"</code> や <code>"gpt-4o-mini"</code>
-                など、プロバイダーがサポートするモデル識別子)。空文字列 <code>""</code> を指定すると、プロバイダーのデフォルトモデルが使用される場合があります。</li>
-            <li><code>message</code>: AI に送信するユーザーメッセージ。</li>
-            <li><code>auth_key</code>: 認証キー（現在のバージョンでは使用されていません）。</li>
-            <li><code>stream</code>: <code>true</code> に設定するとレスポンスがストリーミング (SSE) 形式になります。<code>false</code>
-                または未指定の場合は、完了後に全レスポンスが JSON で返されます。</li>
-        </ul>
-        <h3>成功レスポンス (200 OK, stream=false):</h3>
-        <ul>
-            <li>Content-Type: <code>application/json</code></li>
-            <li>ボディ: AI からの完全な応答を含む JSON オブジェクト。</li>
-        </ul>
-        <pre><code>
+            </code></pre>
+            <ul>
+                <li><code>provider_name</code>: 使用する AI プロバイダーの識別子 (例: <code>"Gemini"</code>)。<code>/models</code>
+                    エンドポイント (<code>type="provider"</code>) で取得した名前を指定します。<strong>省略 (<code>null</code> または未指定)
+                        した場合、<code>g4f</code> のデフォルトプロバイダーが使用されます。</strong></li>
+                <li><code>model</code>: 使用するモデル名 (例: <code>"gemini-1.5-flash"</code>, <code>"gpt-4o-mini"</code>,
+                    <code>"flux"</code> など)。プロバイダーがサポートするモデル識別子を指定します。</li>
+                <li><code>message</code>: AI に送信するユーザーメッセージ (チャットの場合) または画像生成のプロンプト (画像生成の場合)。</li>
+                <li><code>api_key</code>: 特定のプロバイダー/モデルで必要となる API キー。</li>
+                <li><code>auth_key</code>: 認証キー（現在のバージョンでは使用されていません）。</li>
+                <li><code>stream</code>: <code>type="chat"</code> の場合にのみ有効。<code>true</code> に設定するとレスポンスがストリーミング (SSE)
+                    形式になります。<code>false</code> または未指定の場合は、完了後に全レスポンスが JSON で返されます。画像生成リクエストでは無視されます。</li>
+                <li><code>type</code>: リクエストの種類を指定します。
+                    <ul>
+                        <li><code>"chat"</code> (デフォルト): AI と対話します。</li>
+                        <li><code>"image@url"</code>: 画像を生成し、その画像の URL を返します。 <span class="badge badge-rate-limit">Rate
+                                Limit: 10 RPM</span></li>
+                        <li><code>"image@b64"</code>: 画像を生成し、Base64 エンコードされた画像データを返します。 <span
+                                class="badge badge-rate-limit">Rate Limit: 10 RPM</span></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>成功レスポンス (200 OK)</h3>
+            <h4>type="chat", stream=false:</h4>
+            <ul>
+                <li>Content-Type: <code>application/json</code></li>
+                <li>ボディ: AI からの完全な応答を含む JSON オブジェクト。</li>
+            </ul>
+            <pre><code>
 {
   "response": "AI からの応答テキストです。"
 }
-        </code></pre>
-        <h3>成功レスポンス (200 OK, stream=true):</h3>
-        <ul>
-            <li>Content-Type: <code>text/event-stream</code></li>
-            <li>ボディ: Server-Sent Events のストリーム。</li>
-        </ul>
-        <ul>
-            <li>メッセージチャンク:
-                <pre><code>
+            </code></pre>
+
+            <h4>type="chat", stream=true:</h4>
+            <ul>
+                <li>Content-Type: <code>text/event-stream</code></li>
+                <li>ボディ: Server-Sent Events のストリーム。</li>
+            </ul>
+            <ul>
+                <li>メッセージチャンク:
+                    <pre><code>
 data: {"delta": "応答の一部"}
 
 data: {"delta": "次の応答部分"}
 
 ...
-                </code></pre>
-            </li>
-            <li>ストリーム終了:
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li>ストリーム終了:
+                    <pre><code>
 data: {"end_of_stream": true}
-                </code></pre>
-            </li>
-            <li>ストリーミング中のエラー:
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li>ストリーミング中のエラー:
+                    <pre><code>
 event: error
-data: {"error": "エラーメッセージ", "provider": "プロバイダー名またはNone", "model": "モデル名"}
-                </code></pre>
-                <p>(注意: ストリーミング中のエラー発生時、HTTP ステータスコードは 200 のままです)</p>
-            </li>
-        </ul>
-        <h3>エラーレスポンス (非ストリーミング時):</h3>
-        <ul>
-            <li><strong>400 Bad Request:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: 指定された <code>provider_name</code> が存在しないプロバイダー名の場合。</li>
-                </ul>
-                <pre><code>
+data: {"error": "エラーメッセージ", "status_code": 4xx or 5xx, "provider": "プロバイダー名またはDefault", "model": "モデル名"}
+                    </code></pre>
+                    <p>(注意: ストリーミング中のエラー発生時、HTTP ステータスコードは 200 のままです)</p>
+                </li>
+            </ul>
+
+            <h4>type="image@url":</h4>
+            <ul>
+                <li>Content-Type: <code>application/json</code></li>
+                <li>ボディ: 生成された画像の URL を含む JSON オブジェクト。</li>
+            </ul>
+            <pre><code>
+{
+  "image_url": "https://..."
+}
+            </code></pre>
+
+            <h4>type="image@b64":</h4>
+            <ul>
+                <li>Content-Type: <code>application/json</code></li>
+                <li>ボディ: 生成された画像の Base64 エンコードデータを含む JSON オブジェクト。</li>
+            </ul>
+            <pre><code>
+{
+  "image_b64": "iVBORw0KGgoAAAANSUhEUgAAB..."
+}
+            </code></pre>
+
+            <h3>エラーレスポンス (非ストリーミング時 / ストリーミング開始前):</h3>
+            <ul>
+                <li><strong>400 Bad Request:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因:
+                            <ul>
+                                <li>指定された <code>provider_name</code> が無効。</li>
+                                <li>指定された <code>type</code> が無効 (<code>"chat"</code>, <code>"image@url"</code>,
+                                    <code>"image@b64"</code> 以外)。</li>
+                            </ul>
+                        </li>
+                        <li>ボディ例 (Provider名無効):
+                            <pre><code>
 {
   "detail": "指定されたProvider名 '&lt;無効な名前&gt;' は無効です。利用可能なProvider: ['Grok', 'Llama', ...]"
 }
-                </code></pre>
-            </li>
-            <li><strong>404 Not Found:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: プロバイダーは存在するが、指定された <code>model</code> がプロバイダー内部で見つからないかサポートされていない場合 (<code>g4f</code>ライブラリの
-                        <code>ProviderNotFoundError</code> に起因)。
-                    </li>
-                </ul>
-                <pre><code>
+                            </code></pre>
+                        </li>
+                        <li>ボディ例 (Type無効):
+                            <pre><code>
 {
-  "detail": "プロバイダー内部でモデルが見つからないか、サポートされていません: &lt;元のエラー詳細&gt;"
+  "detail": "無効なリクエストタイプ '&lt;無効なタイプ&gt;' です。'chat'、'image@url'、または 'image@b64' を使用してください。"
 }
-                </code></pre>
-            </li>
-            <li><strong>500 Internal Server Error:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: AI プロバイダーから有効な応答コンテンツが得られなかった場合 (例: レスポンス形式が予期しないものだった場合)。</li>
-                </ul>
-                <pre><code>
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>401 Unauthorized:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因: AI プロバイダーでの認証に失敗した場合 (例: 不正な <code>api_key</code>)。</li>
+                        <li>ボディ例:
+                            <pre><code>
+{
+  "detail": "AIプロバイダーでの認証に失敗しました: &lt;元のエラー詳細&gt;"
+}
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>404 Not Found:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因:
+                            <ul>
+                                <li>(チャット) 指定された <code>model</code> がプロバイダー内部で見つからないかサポートされていない
+                                    (<code>ProviderNotFoundError</code> または <code>ModelNotFoundError</code>)。</li>
+                                <li>(画像生成) 指定された <code>model</code> が画像生成モデルとして見つからないかサポートされていない
+                                    (<code>ModelNotFoundError</code>)。</li>
+                            </ul>
+                        </li>
+                        <li>ボディ例 (チャット):
+                            <pre><code>
+{
+  "detail": "プロバイダー '&lt;Provider名&gt;' がモデル '&lt;Model名&gt;' をサポートしていないか、見つかりません: &lt;元のエラー詳細&gt;"
+}
+                            </code></pre>
+                        </li>
+                        <li>ボディ例 (画像生成):
+                            <pre><code>
+{
+  "detail": "画像生成モデル '&lt;Model名&gt;' が見つからないか、サポートされていません: &lt;元のエラー詳細&gt;"
+}
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>429 Too Many Requests:</strong> <span class="badge badge-rate-limit">画像生成のみ</span>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因: 画像生成リクエストのレートリミット (デフォルト: 10回/60秒) を超過した場合。</li>
+                        <li>ヘッダー: <code>Retry-After</code> に再試行可能までの秒数が含まれる場合があります。</li>
+                        <li>ボディ例:
+                            <pre><code>
+{
+  "detail": "画像生成リクエストが多すぎます。60秒あたり10回のリクエストに制限されています。しばらくしてから再試行してください。"
+}
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>500 Internal Server Error:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因:
+                            <ul>
+                                <li>(画像生成) G4F 内部の画像生成コンポーネント (例: Flask アプリケーション) が見つからないなど、予期せぬ内部エラー。</li>
+                                <li>サーバー側の予期せぬエラー全般。</li>
+                            </ul>
+                        </li>
+                        <li>ボディ例 (画像生成コンポーネントエラー):
+                            <pre><code>
+{
+  "detail": "画像プロバイダーの内部コンポーネント(Flask)が見つかりませんでした。G4Fの依存関係を確認してください。"
+}
+                            </code></pre>
+                        </li>
+                        <li>ボディ例 (その他):
+                            <pre><code>
+{
+  "detail": "Internal Server Error"
+}
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>502 Bad Gateway:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因:
+                            <ul>
+                                <li>(チャット) AI プロバイダーから有効な応答コンテンツが得られなかった場合 (例: レスポンス形式が予期しないものだった)。</li>
+                                <li>(画像生成) G4F がプロバイダーから有効な画像データを取得できなかった場合。</li>
+                            </ul>
+                        </li>
+                        <li>ボディ例 (チャット):
+                            <pre><code>
 {
   "detail": "AIプロバイダーから有効な応答コンテンツを取得できませんでした。"
 }
-                </code></pre>
-            </li>
-            <li><strong>503 Service Unavailable:</strong>
-                <ul>
-                    <li>Content-Type: <code>application/json</code></li>
-                    <li>ボディ: AI プロバイダーサービス自体への接続に失敗した場合、または通信中に予期せぬエラーが発生した場合 (<code>ProviderNotFoundError</code> 以外)。
-                    </li>
-                </ul>
-                <pre><code>
+                            </code></pre>
+                        </li>
+                        <li>ボディ例 (画像生成):
+                            <pre><code>
 {
-  "detail": "AIプロバイダーサービスが利用不可か、エラーが発生しました: &lt;元のエラー詳細&gt;"
+  "detail": "G4Fから有効な画像データを取得できませんでした。"
 }
-                </code></pre>
-            </li>
-        </ul>
-        <h3>cURL 例:</h3>
-        <ul>
-            <li><strong>非ストリーミング (プロバイダー指定):</strong>
-                <pre><code>
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>503 Service Unavailable:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因: AI プロバイダーサービス自体への接続に失敗した場合、または通信中に予期せぬエラーが発生した場合 (タイムアウト以外)。</li>
+                        <li>ボディ例:
+                            <pre><code>
+{
+  "detail": "AIプロバイダーサービスでエラーが発生しました: &lt;元のエラー詳細&gt;"
+}
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>504 Gateway Timeout:</strong>
+                    <ul>
+                        <li>Content-Type: <code>application/json</code></li>
+                        <li>原因: AI プロバイダーへの接続がタイムアウトした場合。</li>
+                        <li>ボディ例:
+                            <pre><code>
+{
+  "detail": "AIプロバイダーへの接続に失敗しました: &lt;元のエラー詳細&gt;"
+}
+                            </code></pre>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>cURL 例:</h3>
+            <ul>
+                <li><strong>チャット - 非ストリーミング (プロバイダー指定):</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/chat \
   -H "Content-Type: application/json" \
   -d '{
         "provider_name": "Gemini",
         "model": "gemini-1.5-flash",
         "message": "日本の首都はどこですか？",
-        "stream": false
+        "stream": false,
+        "type": "chat"
       }'
-                </code></pre>
-            </li>
-            <li><strong>非ストリーミング (プロバイダー指定なし - デフォルト使用):</strong>
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li><strong>チャット - 非ストリーミング (プロバイダー指定なし - デフォルト使用):</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/chat \
   -H "Content-Type: application/json" \
   -d '{
-        "provider_name": null,
         "model": "gpt-4o-mini",
         "message": "デフォルトプロバイダーで応答してください。",
         "stream": false
       }'
-                </code></pre>
-            </li>
-            <li><strong>ストリーミング (プロバイダー指定):</strong>
-                <pre><code>
+                    </code></pre>
+                </li>
+                <li><strong>チャット - ストリーミング (プロバイダー指定):</strong>
+                    <pre><code>
 curl -X POST http://127.0.0.1:9002/chat \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
@@ -390,24 +571,50 @@ curl -X POST http://127.0.0.1:9002/chat \
         "message": "自己紹介をしてください。",
         "stream": true
       }' --no-buffer
-                </code></pre>
-                <p>(<code>--no-buffer</code> オプションは、curl がレスポンスをバッファリングせず、受信次第表示するために推奨されます)</p>
-            </li>
-        </ul>
+                    </code></pre>
+                    <p>(<code>--no-buffer</code> オプションは、curl がレスポンスをバッファリングせず、受信次第表示するために推奨されます)</p>
+                </li>
+                <li><strong>画像生成 - URL取得:</strong>
+                    <pre><code>
+curl -X POST http://127.0.0.1:9002/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "flux",
+        "message": "宇宙を飛ぶ猫",
+        "type": "image@url"
+      }'
+                    </code></pre>
+                </li>
+                <li><strong>画像生成 - Base64取得:</strong>
+                    <pre><code>
+curl -X POST http://127.0.0.1:9002/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "flux",
+        "message": "サイバーパンクな街並み",
+        "type": "image@b64"
+      }'
+                    </code></pre>
+                </li>
+            </ul>
+        </div>
 
-        <h2>3. サンプルコード</h2>
+        <div class="endpoint-section">
+            <h2>3. サンプルコード</h2>
 
-        <h3>JavaScript での利用例</h3>
+            <h3>JavaScript での利用例</h3>
 
-        <h4>非ストリーミング</h4>
-        <pre><code>
-async function chatWithAI(providerName, model, message) {
+            <h4>チャット (非ストリーミング)</h4>
+            <pre><code>
+async function chatWithAI(providerName, model, message, apiKey = null) {
   const apiUrl = "http://127.0.0.1:9002/chat";
   const payload = {
     provider_name: providerName, // null or provider name string
     model: model,
     message: message,
+    api_key: apiKey,
     stream: false,
+    type: "chat" // Explicitly set type for clarity
   };
 
   try {
@@ -420,13 +627,11 @@ async function chatWithAI(providerName, model, message) {
     });
 
     if (!response.ok) {
-      // Try to parse error detail from JSON response
       let errorDetail = `HTTP error! status: ${response.status}`;
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || JSON.stringify(errorData);
       } catch (e) {
-        // If response is not JSON, use text
         errorDetail = await response.text();
       }
       throw new Error(errorDetail);
@@ -437,7 +642,7 @@ async function chatWithAI(providerName, model, message) {
 
   } catch (error) {
     console.error("Error during chat request:", error);
-    throw error; // Re-throw the error for further handling
+    throw error;
   }
 }
 
@@ -450,17 +655,19 @@ chatWithAI("Gemini", "gemini-1.5-flash", "こんにちは")
 chatWithAI(null, "gpt-4o-mini", "デフォルトプロバイダーで挨拶して")
   .then(response => console.log("AI Response (Default):", response))
   .catch(error => console.error("Error (Default):", error.message));
-        </code></pre>
+            </code></pre>
 
-        <h4>ストリーミング</h4>
-        <pre><code>
-async function chatWithAIStream(providerName, model, message, onDelta, onEnd, onError) {
+            <h4>チャット (ストリーミング)</h4>
+            <pre><code>
+async function chatWithAIStream(providerName, model, message, apiKey = null, onDelta, onEnd, onError) {
   const apiUrl = "http://127.0.0.1:9002/chat";
   const payload = {
-    provider_name: providerName, // null or provider name string
+    provider_name: providerName,
     model: model,
     message: message,
+    api_key: apiKey,
     stream: true,
+    type: "chat"
   };
 
   try {
@@ -468,12 +675,11 @@ async function chatWithAIStream(providerName, model, message, onDelta, onEnd, on
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "text/event-stream" // Important for SSE
+        "Accept": "text/event-stream"
       },
       body: JSON.stringify(payload),
     });
 
-    // Check for non-2xx status codes before attempting to read the stream
     if (!response.ok) {
       let errorDetail = `HTTP error! status: ${response.status}`;
        try {
@@ -493,31 +699,33 @@ async function chatWithAIStream(providerName, model, message, onDelta, onEnd, on
       const { done, value } = await reader.read();
       if (done) {
         console.log("Stream finished.");
+        // Check buffer for any remaining data if necessary
         break;
       }
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n\n'); // SSE messages are separated by double newlines
-      buffer = lines.pop(); // Keep the last (potentially incomplete) message in the buffer
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop(); // Keep incomplete message
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const dataStr = line.substring(6); // Remove 'data: ' prefix
+          const dataStr = line.substring(6);
           try {
             const data = JSON.parse(dataStr);
             if (data.delta) {
               if (onDelta) onDelta(data.delta);
             } else if (data.end_of_stream) {
               if (onEnd) onEnd();
-              return; // End the loop gracefully
+              return; // End gracefully
             }
           } catch (e) {
             console.error("Failed to parse SSE data:", dataStr, e);
           }
         } else if (line.startsWith('event: error')) {
-           const dataLine = lines.find(l => l.startsWith('data: '));
-           if (dataLine) {
-               const errorDataStr = dataLine.substring(6);
+           // Find the next data line for the error payload
+           const dataLineIndex = lines.indexOf(line) + 1;
+           if (dataLineIndex < lines.length && lines[dataLineIndex].startsWith('data: ')) {
+               const errorDataStr = lines[dataLineIndex].substring(6);
                try {
                    const errorData = JSON.parse(errorDataStr);
                    if (onError) onError(errorData);
@@ -528,15 +736,10 @@ async function chatWithAIStream(providerName, model, message, onDelta, onEnd, on
            } else {
                if (onError) onError({ error: "Received error event without data" });
            }
-           return; // Stop processing on error event
+           return; // Stop on error event
         }
       }
     }
-     // Process any remaining buffer content if needed, though usually handled by end_of_stream
-     if (buffer.startsWith('data: ')) {
-         // Handle potential final chunk if stream ends without double newline
-     }
-
   } catch (error) {
     console.error("Error during streaming chat request:", error);
     if (onError) onError({ error: error.message });
@@ -546,13 +749,13 @@ async function chatWithAIStream(providerName, model, message, onDelta, onEnd, on
 // 使用例:
 let fullResponse = "";
 chatWithAIStream(
-  "Gemini", // または null
-  "gemini-1.5-flash", // または "gpt-4o-mini" など
+  "Gemini",
+  "gemini-1.5-flash",
   "自己紹介をしてください。",
+  null, // apiKey
   (delta) => {
     console.log("Delta:", delta);
     fullResponse += delta;
-    // ここでUIを更新するなど
   },
   () => {
     console.log("Stream ended. Full response:", fullResponse);
@@ -561,47 +764,165 @@ chatWithAIStream(
     console.error("Stream Error:", errorData);
   }
 );
-        </code></pre>
+            </code></pre>
 
-        <h3>Python での利用例</h3>
+            <h4>画像生成 (URL取得)</h4>
+            <pre><code>
+async function generateImageURL(model, prompt, apiKey = null) {
+  const apiUrl = "http://127.0.0.1:9002/chat";
+  const payload = {
+    provider_name: null, // Provider often inferred from model for images
+    model: model,
+    message: prompt, // Use message as prompt
+    api_key: apiKey,
+    stream: false, // Ignored for image generation
+    type: "image@url"
+  };
 
-        <h4>非ストリーミング</h4>
-        <pre><code>
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let errorDetail = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || JSON.stringify(errorData);
+      } catch (e) {
+        errorDetail = await response.text();
+      }
+      // Include Retry-After header info if it's a 429 error
+      if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          if (retryAfter) {
+              errorDetail += ` (Retry after ${retryAfter} seconds)`;
+          }
+      }
+      throw new Error(errorDetail);
+    }
+
+    const data = await response.json();
+    return data.image_url;
+
+  } catch (error) {
+    console.error("Error during image URL request:", error);
+    throw error;
+  }
+}
+
+// 使用例:
+generateImageURL("flux", "A cat wearing sunglasses riding a skateboard")
+  .then(imageUrl => console.log("Generated Image URL:", imageUrl))
+  .catch(error => console.error("Image Generation Error:", error.message));
+            </code></pre>
+
+            <h4>画像生成 (Base64取得)</h4>
+            <pre><code>
+async function generateImageBase64(model, prompt, apiKey = null) {
+  const apiUrl = "http://127.0.0.1:9002/chat";
+  const payload = {
+    provider_name: null,
+    model: model,
+    message: prompt,
+    api_key: apiKey,
+    stream: false,
+    type: "image@b64"
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+     if (!response.ok) {
+      let errorDetail = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || JSON.stringify(errorData);
+      } catch (e) {
+        errorDetail = await response.text();
+      }
+       if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          if (retryAfter) {
+              errorDetail += ` (Retry after ${retryAfter} seconds)`;
+          }
+      }
+      throw new Error(errorDetail);
+    }
+
+    const data = await response.json();
+    return data.image_b64; // Returns the Base64 string
+
+  } catch (error) {
+    console.error("Error during image Base64 request:", error);
+    throw error;
+  }
+}
+
+// 使用例:
+generateImageBase64("flux", "A photorealistic image of a red apple on a wooden table")
+  .then(b64Data => {
+      console.log("Generated Image Base64 (first 100 chars):", b64Data.substring(0, 100) + "...");
+      // You can use this data directly in an img tag:
+      // const imgElement = document.createElement('img');
+      // imgElement.src = `data:image/png;base64,${b64Data}`; // Assuming PNG format
+      // document.body.appendChild(imgElement);
+  })
+  .catch(error => console.error("Image Generation Error:", error.message));
+            </code></pre>
+
+
+            <h3>Python での利用例</h3>
+
+            <h4>チャット (非ストリーミング)</h4>
+            <pre><code>
 import requests
 import json
 from typing import Optional
 
-def chat_with_ai(provider_name: Optional[str], model: str, message: str):
+def chat_with_ai(provider_name: Optional[str], model: str, message: str, api_key: Optional[str] = None):
     url = "http://127.0.0.1:9002/chat"
     headers = {'Content-Type': 'application/json'}
     data = {
-        "provider_name": provider_name, # None or provider name string
+        "provider_name": provider_name,
         "model": model,
         "message": message,
-        "stream": False
+        "api_key": api_key,
+        "stream": False,
+        "type": "chat"
     }
     try:
-        response = requests.post(url, headers=headers, json=data) # Use json parameter for automatic serialization
-        response.raise_for_status() # Raises HTTPError for 4xx/5xx status codes
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
         return response.json()['response']
     except requests.exceptions.RequestException as e:
-        # Handle connection errors, timeouts, etc.
         print(f"Request failed: {e}")
-        # Try to get more details from the response if available
         if e.response is not None:
             try:
                 print(f"Error response: {e.response.json()}")
             except json.JSONDecodeError:
                 print(f"Error response (text): {e.response.text}")
-        return None # Or re-raise a custom exception
+        return None
     except KeyError:
         print(f"Error: 'response' key not found in the JSON response.")
-        print(f"Received JSON: {response.json()}")
+        try:
+            print(f"Received JSON: {response.json()}")
+        except json.JSONDecodeError:
+             print(f"Received non-JSON response: {response.text}")
         return None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return None
-
 
 # 使用例 1: プロバイダー指定
 try:
@@ -613,73 +934,74 @@ except Exception as e:
 
 # 使用例 2: プロバイダー指定なし (デフォルトを使用)
 try:
-    # gpt-4o-mini はデフォルトプロバイダーで使えると仮定
     response = chat_with_ai(None, "gpt-4o-mini", "デフォルトプロバイダーで挨拶して")
     if response:
         print("AI Response (Default):", response)
 except Exception as e:
     print(f"An error occurred (Default): {e}")
-        </code></pre>
+            </code></pre>
 
-        <h4>ストリーミング</h4>
-        <pre><code>
+            <h4>チャット (ストリーミング)</h4>
+            <pre><code>
 import requests
 import json
 import sseclient # Requires: pip install sseclient-py
 from typing import Optional
 
-def chat_with_ai_stream(provider_name: Optional[str], model: str, message: str):
+def chat_with_ai_stream(provider_name: Optional[str], model: str, message: str, api_key: Optional[str] = None):
     url = "http://127.0.0.1:9002/chat"
     headers = {'Content-Type': 'application/json', 'Accept': 'text/event-stream'}
     data = {
-        "provider_name": provider_name, # None or provider name string
+        "provider_name": provider_name,
         "model": model,
         "message": message,
-        "stream": True
+        "api_key": api_key,
+        "stream": True,
+        "type": "chat"
     }
     try:
         response = requests.post(url, headers=headers, json=data, stream=True)
-        response.raise_for_status() # Check for 4xx/5xx errors before processing stream
+        response.raise_for_status() # Check before processing stream
 
         client = sseclient.SSEClient(response)
         full_response_text = ""
 
         for event in client.events():
-            # Check for custom error event first
             if event.event == 'error':
                 try:
                     error_data = json.loads(event.data)
                     print(f"\n--- Stream Error Received ---")
+                    print(f"Status Code: {error_data.get('status_code', 'N/A')}")
                     print(f"Error: {error_data.get('error', 'Unknown error')}")
                     print(f"Provider: {error_data.get('provider', 'N/A')}")
                     print(f"Model: {error_data.get('model', 'N/A')}")
                     print(f"-----------------------------")
-                    # Depending on the error, you might want to stop processing
-                    return None # Or raise an exception
+                    return None # Stop processing on error
                 except json.JSONDecodeError:
                     print(f"\n--- Stream Error Received (Undecodable) ---")
                     print(f"Raw data: {event.data}")
                     print(f"------------------------------------------")
                     return None
 
-            # Process regular data events (default event type is 'message')
             if event.data:
                 try:
                     data_dict = json.loads(event.data)
                     if 'delta' in data_dict:
                         delta = data_dict['delta']
-                        print(delta, end='', flush=True) # Print delta immediately
+                        print(delta, end='', flush=True)
                         full_response_text += delta
                     elif 'end_of_stream' in data_dict and data_dict['end_of_stream']:
                         print("\n--- End of Stream ---")
-                        break # Exit the loop gracefully
+                        break
                 except json.JSONDecodeError:
-                    print(f"\nWarning: Received non-JSON data: {event.data}")
+                    # Ignore if data is not valid JSON (might happen)
+                    # print(f"\nWarning: Received non-JSON data: {event.data}")
+                    pass
                 except Exception as e:
                     print(f"\nError processing stream data: {e}")
                     print(f"Data received: {event.data}")
 
-        return full_response_text # Return the complete text after streaming
+        return full_response_text
 
     except requests.exceptions.RequestException as e:
         print(f"\nRequest failed: {e}")
@@ -705,14 +1027,130 @@ except Exception as e:
 # 使用例 2: プロバイダー指定なし (デフォルトを使用)
 print("\n--- Streaming Chat (Default) ---")
 try:
-    # gpt-4o-mini はデフォルトプロバイダーで使えると仮定
     full_response = chat_with_ai_stream(None, "gpt-4o-mini", "簡単な挨拶をストリーミングで返してください。")
     # if full_response is not None:
     #     print("\nFinal assembled response (Default):\n", full_response)
 except Exception as e:
     print(f"\nAn error occurred (Default Stream): {e}")
+            </code></pre>
 
-        </code></pre>
+            <h4>画像生成 (URL取得)</h4>
+            <pre><code>
+import requests
+import json
+from typing import Optional
+
+def generate_image_url(model: str, prompt: str, api_key: Optional[str] = None):
+    url = "http://127.0.0.1:9002/chat"
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "model": model,
+        "message": prompt, # Use message as prompt
+        "api_key": api_key,
+        "type": "image@url"
+    }
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()['image_url']
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        if e.response is not None:
+            try:
+                error_details = e.response.json()
+                print(f"Error response: {error_details}")
+                # Check for Retry-After header in case of 429
+                if e.response.status_code == 429:
+                    retry_after = e.response.headers.get('Retry-After')
+                    if retry_after:
+                        print(f"Rate limit hit. Retry after {retry_after} seconds.")
+            except json.JSONDecodeError:
+                print(f"Error response (text): {e.response.text}")
+        return None
+    except KeyError:
+        print(f"Error: 'image_url' key not found in the JSON response.")
+        try:
+            print(f"Received JSON: {response.json()}")
+        except json.JSONDecodeError:
+             print(f"Received non-JSON response: {response.text}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
+
+# 使用例:
+try:
+    image_url = generate_image_url("flux", "A watercolor painting of a sunset over the ocean")
+    if image_url:
+        print("Generated Image URL:", image_url)
+except Exception as e:
+    print(f"An error occurred during image generation: {e}")
+
+            </code></pre>
+
+            <h4>画像生成 (Base64取得)</h4>
+            <pre><code>
+import requests
+import json
+from typing import Optional
+import base64 # For potentially saving the image
+
+def generate_image_base64(model: str, prompt: str, api_key: Optional[str] = None):
+    url = "http://127.0.0.1:9002/chat"
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "model": model,
+        "message": prompt,
+        "api_key": api_key,
+        "type": "image@b64"
+    }
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()['image_b64'] # Returns the Base64 string
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        if e.response is not None:
+            try:
+                error_details = e.response.json()
+                print(f"Error response: {error_details}")
+                if e.response.status_code == 429:
+                    retry_after = e.response.headers.get('Retry-After')
+                    if retry_after:
+                        print(f"Rate limit hit. Retry after {retry_after} seconds.")
+            except json.JSONDecodeError:
+                print(f"Error response (text): {e.response.text}")
+        return None
+    except KeyError:
+        print(f"Error: 'image_b64' key not found in the JSON response.")
+        try:
+            print(f"Received JSON: {response.json()}")
+        except json.JSONDecodeError:
+             print(f"Received non-JSON response: {response.text}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
+
+# 使用例:
+try:
+    b64_data = generate_image_base64("flux", "A cute robot waving hello")
+    if b64_data:
+        print("Generated Image Base64 (first 100 chars):", b64_data[:100] + "...")
+        # Optional: Save the image to a file
+        # try:
+        #     image_data = base64.b64decode(b64_data)
+        #     with open("generated_image.png", "wb") as f: # Assuming PNG format
+        #         f.write(image_data)
+        #     print("Image saved as generated_image.png")
+        # except Exception as save_e:
+        #     print(f"Error saving image: {save_e}")
+except Exception as e:
+    print(f"An error occurred during image generation: {e}")
+
+            </code></pre>
+        </div>
+
     </div>
 </body>
 
