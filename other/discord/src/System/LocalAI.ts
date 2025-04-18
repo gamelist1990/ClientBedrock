@@ -3,85 +3,114 @@ import { TextDecoder } from 'util';
 
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:9002";
 
-// --- インターフェース定義 ---
 interface StreamChunk {
     delta?: string;
     end_of_stream?: boolean;
     error?: any;
+    status_code?: number;
+    provider?: string;
+    model?: string;
 }
 
 type OnChunkCallback = (chunk: StreamChunk) => void;
 
-interface AIResponseJson { response: string; }
-interface ErrorResponseJson {
-    detail?: string;
+interface AIResponseJson {
+    response: string;
 }
 
-// --- LocalAI クラス ---
+interface ImageResponseJson {
+    image_url?: string;
+    image_b64?: string;
+}
+
+interface ErrorResponseJson {
+    detail?: string | any;
+}
+
+interface ChatRequestPayload {
+    provider_name?: string;
+    model: string;
+    message: string;
+    stream: boolean;
+    type?: 'chat' | 'image@url' | 'image@b64';
+    api_key?: string;
+}
+
+interface ModelListRequestPayload {
+    type: 'provider' | 'model';
+    filter?: string;
+}
+
 class LocalAI {
     private backendUrl: string;
-    private providerName: string; // "None" または有効なプロバイダー名
-    private modelName: string;
+    private defaultProviderName: string | null = null;
+    private defaultModelName: string;
 
-    /**
-     * LocalAI クラスのインスタンスを生成します。
-     * @param providerName 使用するプロバイダー名。"None" を指定するとプロバイダー指定なしでリクエストします。
-     * @param modelName 使用するモデル名。
-     * @param backendUrl (オプション) バックエンドAPIのURL。デフォルトは "http://127.0.0.1:9002"。
-     */
-    constructor(providerName: string | null | undefined, modelName: string, backendUrl: string = DEFAULT_BACKEND_URL) {
-        // providerName が null や undefined の場合は "None" として扱う
-        this.providerName = (providerName === null || providerName === undefined) ? "None" : providerName;
+    constructor(
+        defaultProviderName: string | null | undefined,
+        defaultModelName: string,
+        backendUrl: string = DEFAULT_BACKEND_URL
+    ) {
+        this.defaultProviderName = defaultProviderName === undefined ? null : defaultProviderName;
 
-        // providerName が空文字の場合の警告
-        if (this.providerName === '') {
-             console.warn(`Provider名が空文字です。Provider指定なしとして扱われます。意図しない場合は有効なProvider名または "None" を指定してください。`);
-             this.providerName = "None"; // 空文字も "None" 扱いにする
+        if (this.defaultProviderName === '') {
+            console.warn(`デフォルトのProvider名が空文字です。Provider指定なしとして扱われます。リクエスト時に指定が必要です。`);
+            this.defaultProviderName = null;
         }
-        // modelName が空の場合の警告
-        if (!modelName) {
-            // モデル名は必須なのでエラーにするか、警告に留めるか検討。現状は警告。
-            console.warn(`モデル名が指定されていません。空でない文字列を指定することを強く推奨します。`);
-            // throw new Error("モデル名は必須です。"); // 必要ならエラーにする
+        if (!defaultModelName || typeof defaultModelName !== 'string' || defaultModelName.trim() === '') {
+            throw new Error("デフォルトのモデル名は必須であり、空でない文字列である必要があります。");
         }
-        this.modelName = modelName;
+        this.defaultModelName = defaultModelName.trim();
         this.backendUrl = backendUrl;
 
-        console.log(`LocalAI initialized: Provider='${this.providerName}', Model='${this.modelName}', Backend='${this.backendUrl}'`);
+        console.log(`LocalAI initialized: DefaultProvider='${this.defaultProviderName ?? "Not set"}', DefaultModel='${this.defaultModelName}', Backend='${this.backendUrl}'`);
     }
 
-    /**
-     * AIバックエンドとチャットを行います。ストリーミング対応。
-     * @param prompt ユーザーからの入力プロンプト。
-     * @param onChunk (オプション) ストリーミング時にチャンクデータを受け取るコールバック関数。
-     * @returns ストリーミング時は全応答テキスト、非ストリーミング時は応答テキスト、エラー時は null。
-     * @throws ネットワークエラーやバックエンドエラーが発生した場合。
-     */
-    public async chat(prompt: string, onChunk?: OnChunkCallback): Promise<string | null> {
+    public async chat(
+        prompt: string,
+        options?: {
+            providerName?: string | null;
+            modelName?: string;
+            apiKey?: string;
+            onChunk?: OnChunkCallback;
+        }
+    ): Promise<string> {
         if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
             throw new Error("有効なプロンプトを入力してください。");
         }
 
+        const { providerName: reqProviderName, modelName: reqModelName, apiKey, onChunk } = options ?? {};
+
+        const providerName = reqProviderName !== undefined ? reqProviderName : this.defaultProviderName;
+        const modelName = reqModelName?.trim() || this.defaultModelName;
+        if (!modelName) {
+            throw new Error("モデル名が指定されていません。コンストラクタまたは chat メソッドのオプションで指定してください。");
+        }
+
+
         const isStreaming = onChunk !== undefined;
         const requestUrl = `${this.backendUrl}/chat`;
 
-        const payload: {
-            provider_name?: string; // "None" の場合は含めない
-            model: string;
-            message: string;
-            stream: boolean;
-        } = {
-            model: this.modelName,
-            message: prompt.trim(), // 前後の空白を除去
-            stream: isStreaming
+        const payload: ChatRequestPayload = {
+            model: modelName,
+            message: prompt.trim(),
+            stream: isStreaming,
+            type: 'chat',
         };
 
-        // providerName が "None" でない場合のみペイロードに追加
-        if (this.providerName !== "None") {
-            payload.provider_name = this.providerName;
+        if (providerName !== null) {
+            if (providerName.trim() === '') {
+                console.warn(`chatリクエストでProvider名が空文字です。Provider指定なしとして扱われます。`);
+            } else {
+                payload.provider_name = providerName;
+            }
         }
 
-        console.log(`リクエスト送信中: ${requestUrl} - Payload: ${JSON.stringify(payload)}`);
+        if (apiKey) {
+            payload.api_key = apiKey;
+        }
+
+        console.log(`チャットリクエスト送信中: ${requestUrl} - Provider: ${payload.provider_name ?? 'Default'}, Model: ${payload.model}, Stream: ${isStreaming}`);
 
         try {
             const response: Response = await fetch(requestUrl, {
@@ -93,39 +122,18 @@ class LocalAI {
                 body: JSON.stringify(payload)
             });
 
-            // --- エラーハンドリング ---
             if (!response.ok) {
-                let errorDetail = `HTTPステータス: ${response.status} ${response.statusText}`;
-                try {
-                    // エラーレスポンスがJSON形式の場合、詳細を取得試行
-                    const errorJson = await response.json() as ErrorResponseJson;
-                    if (errorJson?.detail) {
-                        errorDetail = `バックエンドエラー (${response.status}): ${errorJson.detail}`;
-                    }
-                } catch (jsonError) {
-                    // JSONでなければテキストとして取得試行
-                    try {
-                        const errorText = await response.text();
-                        if (errorText) {
-                            errorDetail = `バックエンドエラー (${response.status}): ${errorText}`;
-                        }
-                    } catch (textError) {
-                        console.error("エラーレスポンスのテキスト読み取りにも失敗:", textError);
-                    }
-                }
-                console.error(`バックエンドへのリクエストが失敗しました。 ${errorDetail}`);
-                // エラーを投げて呼び出し元で処理させる
-                throw new Error(`AIバックエンドとの通信に失敗しました。(${errorDetail})`);
+                await this._handleErrorResponse(response, 'チャットリクエスト');
+                throw new Error("予期せぬエラーハンドリングフロー");
             }
 
-            // --- ストリーミング処理 ---
             if (isStreaming && response.body && onChunk) {
                 return this._handleStreamingResponse(response, onChunk);
             }
 
-            // --- 非ストリーミング処理 ---
             const responseData = await response.json() as AIResponseJson;
             if (responseData?.response && typeof responseData.response === 'string') {
+                console.log("チャット応答受信 (非ストリーミング)。");
                 return responseData.response;
             } else {
                 console.warn("バックエンドからの応答形式が無効でした(非ストリーミング)。", responseData);
@@ -133,137 +141,56 @@ class LocalAI {
             }
 
         } catch (error: any) {
-            // fetch 自体のエラー (ネットワークエラーなど) や、上記で throw されたエラーを捕捉
-            console.error("AIバックエンドへのリクエスト中にエラーが発生しました:", error);
-            // エラーの原因情報があれば含める
+            console.error("チャットリクエスト中にエラーが発生しました:", error);
             const causeMessage = error.cause ? ` (Cause: ${error.cause.code || error.cause.message || error.cause})` : '';
-            // エラーを再throwして呼び出し元に伝える
             throw new Error(`AIバックエンドリクエスト失敗: ${error.message}${causeMessage}`);
         }
     }
 
-    /**
-     * ストリーミング応答を処理する内部ヘルパーメソッド。
-     * @param response フェッチ応答オブジェクト。
-     * @param onChunk チャンクデータを受け取るコールバック関数。
-     * @returns 結合された全応答テキスト。
-     * @throws ストリーム読み取りエラーが発生した場合。
-     */
-    private async _handleStreamingResponse(response: Response, onChunk: OnChunkCallback): Promise<string> {
-        if (!response.body) {
-            throw new Error("Streaming response body is missing.");
+    public async generateImage(
+        prompt: string,
+        options?: {
+            providerName?: string | null;
+            modelName?: string;
+            apiKey?: string;
+            format?: 'url' | 'b64';
         }
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let fullResponseText = '';
-
-        try {
-            // ReadableStream を非同期イテレータとして処理
-            for await (const chunk of response.body) {
-                // chunk が Buffer か Uint8Array かで処理を分ける必要はない場合が多いが、念のため Buffer.from で統一
-                if (chunk instanceof Buffer || chunk instanceof Uint8Array) {
-                    buffer += decoder.decode(chunk, { stream: true });
-                } else {
-                    throw new Error('Received chunk is neither Buffer nor Uint8Array');
-                }
-                let parts = buffer.split('\n\n'); // SSE のメッセージ区切り
-                buffer = parts.pop() || ''; // 最後の不完全なメッセージをバッファに残す
-
-                for (const part of parts) {
-                    if (part.trim() === '') continue;
-
-                    let eventType = 'message'; // デフォルトイベントタイプ
-                    let data = '';
-                    const lines = part.split('\n');
-
-                    // SSE の各行を解析
-                    for (const line of lines) {
-                        if (line.startsWith('event: ')) {
-                            eventType = line.substring('event: '.length).trim();
-                        } else if (line.startsWith('data: ')) {
-                            // data: 行が複数ある場合を考慮して連結
-                            data += line.substring('data: '.length);
-                        }
-                        // id: や retry: など他のSSEフィールドはここでは無視
-                    }
-
-                    if (data) {
-                        try {
-                            const chunkData: StreamChunk = JSON.parse(data);
-
-                            // エラーイベントの処理
-                            if (eventType === 'error') {
-                                console.error("ストリーミングエラー受信:", chunkData);
-                                // エラー情報をコールバックで通知
-                                onChunk({ error: chunkData.error || chunkData });
-                                // エラー発生時はループを継続するか、ここで throw するか検討。
-                                // ここでは継続し、最終的に不完全な応答が返る可能性がある。
-                                // throw new Error(`Streaming error received: ${JSON.stringify(chunkData.error || chunkData)}`);
-                            } else {
-                                // 通常のデータチャンク処理
-                                if (chunkData.delta) {
-                                    fullResponseText += chunkData.delta;
-                                }
-                                // コールバックでチャンクデータを通知
-                                onChunk(chunkData);
-                                // ストリーム終了イベントのログ出力
-                                if (chunkData.end_of_stream) {
-                                    console.log("ストリーム終了イベント受信。");
-                                    // 終了イベントを受け取ったらループを抜けても良いかもしれないが、
-                                    // 念のため後続のチャンクがないか確認するためループは継続する。
-                                }
-                            }
-                        } catch (e) {
-                            console.error("受信データのJSONパース失敗:", data, e);
-                            // パース失敗もエラーとしてコールバック通知
-                            onChunk({ error: { message: "Failed to parse chunk data", receivedData: data } });
-                        }
-                    }
-                }
-            }
-            // ストリームが正常に終了した場合、バッファの最終デコード
-            buffer += decoder.decode(undefined, { stream: false });
-            if (buffer.trim()) {
-                console.warn("ストリーム終了後、未処理のバッファが残っています:", buffer);
-                // 必要であれば、この残ったバッファも処理するロジックを追加
-            }
-
-            console.log("ストリーム読み取り完了。");
-            return fullResponseText; // 結合したテキストを返す
-
-        } catch (streamError: any) {
-            console.error("ストリーム読み取り中にエラー:", streamError);
-            // ストリーム読み取りエラーもコールバック通知
-            onChunk({ error: { message: "Stream reading error", cause: streamError?.message || streamError } });
-            // エラーを再throw
-            throw new Error(`ストリーム読み取りエラー: ${streamError.message}`);
+    ): Promise<string> {
+        if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
+            throw new Error("有効なプロンプトを入力してください。");
         }
-    }
 
-    /**
-     * 利用可能なプロバイダー名のリストを取得します。
-     * @returns プロバイダー名の配列。取得失敗時は空配列。
-     */
-    public async getAvailableProviders(): Promise<string[]> {
-        return this._fetchIdentifierList("provider");
-    }
+        const { providerName: reqProviderName, modelName: reqModelName, apiKey, format = 'url' } = options ?? {};
 
-    /**
-     * 利用可能なモデル名のリストを取得します。
-     * @returns モデル名の配列。取得失敗時は空配列。
-     */
-    public async getAvailableModels(): Promise<string[]> {
-        return this._fetchIdentifierList("model");
-    }
+        const providerName = reqProviderName !== undefined ? reqProviderName : this.defaultProviderName;
+        const modelName = reqModelName?.trim() || this.defaultModelName;
+        if (!modelName) {
+            throw new Error("モデル名が指定されていません。コンストラクタまたは generateImage メソッドのオプションで指定してください。");
+        }
 
-    /**
-     * バックエンドから識別子（プロバイダーまたはモデル）のリストを取得する内部ヘルパーメソッド。
-     * @param identifierType 取得する識別子のタイプ ('provider' または 'model')。
-     * @returns 識別子の文字列配列。取得失敗時は空配列。
-     */
-    private async _fetchIdentifierList(identifierType: 'provider' | 'model'): Promise<string[]> {
-        const requestUrl = `${this.backendUrl}/models`;
-        console.log(`利用可能な ${identifierType} リストを取得中: ${requestUrl}`);
+        const requestUrl = `${this.backendUrl}/chat`;
+        const requestType = format === 'b64' ? 'image@b64' : 'image@url';
+
+        const payload: ChatRequestPayload = {
+            model: modelName,
+            message: prompt.trim(),
+            stream: false,
+            type: requestType,
+        };
+
+        if (providerName !== null) {
+            if (providerName.trim() === '') {
+                console.warn(`画像生成リクエストでProvider名が空文字です。Provider指定なしとして扱われます。`);
+            } else {
+                payload.provider_name = providerName;
+            }
+        }
+        if (apiKey) {
+            payload.api_key = apiKey;
+        }
+
+        console.log(`画像生成リクエスト送信中: ${requestUrl} - Provider: ${payload.provider_name ?? 'Default'}, Model: ${payload.model}, Format: ${format}`);
+
         try {
             const response: Response = await fetch(requestUrl, {
                 method: 'POST',
@@ -271,38 +198,189 @@ class LocalAI {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                // リクエストボディに type を含める
-                body: JSON.stringify({ type: identifierType })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
-                let errorDetail = `HTTPステータス: ${response.status} ${response.statusText}`;
-                try {
-                    const errorJson = await response.json() as ErrorResponseJson;
-                    if (errorJson?.detail) {
-                        errorDetail = `${identifierType}リスト取得エラー (${response.status}): ${errorJson.detail}`;
-                    }
-                } catch (e) { /* ignore json parse error */ }
-                console.error(`${identifierType}リストの取得に失敗しました。 ${errorDetail}`);
-                return []; // エラー時は空配列を返す
+                await this._handleErrorResponse(response, '画像生成リクエスト');
+                throw new Error("予期せぬエラーハンドリングフロー");
             }
 
-            // バックエンドは直接 string[] を返すことを期待
+            const responseData = await response.json() as ImageResponseJson;
+
+            if (format === 'url' && responseData?.image_url && typeof responseData.image_url === 'string') {
+                console.log("画像URL受信完了。");
+                return responseData.image_url;
+            } else if (format === 'b64' && responseData?.image_b64 && typeof responseData.image_b64 === 'string') {
+                console.log("画像Base64データ受信完了。");
+                return responseData.image_b64;
+            } else {
+                console.warn(`バックエンドからの画像応答形式が無効でした (期待形式: ${format})。`, responseData);
+                throw new Error(`AIバックエンドからの画像応答形式が期待した形式 (${format}) ではありませんでした。`);
+            }
+
+        } catch (error: any) {
+            console.error("画像生成リクエスト中にエラーが発生しました:", error);
+            const causeMessage = error.cause ? ` (Cause: ${error.cause.code || error.cause.message || error.cause})` : '';
+            throw new Error(`AIバックエンドリクエスト失敗: ${error.message}${causeMessage}`);
+        }
+    }
+
+    private async _handleErrorResponse(response: Response, requestType: string): Promise<never> {
+        let errorDetail = `HTTPステータス: ${response.status} ${response.statusText}`;
+        let responseBodyText = '';
+        try {
+            responseBodyText = await response.text();
+            try {
+                const errorJson = JSON.parse(responseBodyText) as ErrorResponseJson;
+                if (errorJson?.detail) {
+                    const detailString = typeof errorJson.detail === 'string' ? errorJson.detail : JSON.stringify(errorJson.detail);
+                    errorDetail = `バックエンドエラー (${response.status}): ${detailString}`;
+                } else if (responseBodyText) {
+                    errorDetail = `バックエンドエラー (${response.status}): ${responseBodyText}`;
+                }
+            } catch (jsonError) {
+                if (responseBodyText) {
+                    errorDetail = `バックエンドエラー (${response.status}): ${responseBodyText}`;
+                }
+            }
+        } catch (textError) {
+            console.error("エラーレスポンスのテキスト読み取りにも失敗:", textError);
+        }
+        const errorMessage = `${requestType}が失敗しました。 ${errorDetail}`;
+        console.error(errorMessage);
+        throw new Error(`AIバックエンドとの通信に失敗しました。(${errorDetail})`, { cause: responseBodyText || undefined });
+    }
+
+
+    private async _handleStreamingResponse(response: Response, onChunk: OnChunkCallback): Promise<string> {
+        if (!response.body) {
+            throw new Error("Streaming response body is missing.");
+        }
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let fullResponseText = '';
+        let streamEndedNaturally = false;
+
+        try {
+            for await (const rawChunk of response.body) {
+                if (!(rawChunk instanceof Uint8Array)) {
+                    console.warn("Received chunk is not Uint8Array, attempting to convert.");
+                    buffer += decoder.decode(Buffer.from(rawChunk), { stream: true });
+                } else {
+                    buffer += decoder.decode(rawChunk, { stream: true });
+                }
+
+                let parts = buffer.split('\n\n');
+                buffer = parts.pop() || '';
+
+                for (const part of parts) {
+                    if (part.trim() === '') continue;
+
+                    let eventType = 'message';
+                    let data = '';
+                    const lines = part.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            eventType = line.substring('event: '.length).trim();
+                        } else if (line.startsWith('data: ')) {
+                            data += line.substring('data: '.length);
+                        }
+                    }
+
+                    if (data) {
+                        try {
+                            const chunkData: StreamChunk = JSON.parse(data);
+
+                            if (eventType === 'error') {
+                                console.error("ストリーミングエラー受信:", chunkData);
+                                onChunk(chunkData);
+                                throw new Error(`ストリーミングエラー受信: ${JSON.stringify(chunkData.error || chunkData)}`);
+                            } else {
+                                if (chunkData.delta) {
+                                    fullResponseText += chunkData.delta;
+                                }
+                                onChunk(chunkData);
+                                if (chunkData.end_of_stream) {
+                                    console.log("ストリーム終了イベント受信。");
+                                    streamEndedNaturally = true;
+                                }
+                            }
+                        } catch (e: any) {
+                            console.error("受信データのJSONパース失敗:", data, e);
+                            const parseError = { error: { message: "Failed to parse chunk data", receivedData: data, cause: e.message } };
+                            onChunk(parseError);
+                            throw new Error(`受信データのJSONパース失敗: ${e.message}`);
+                        }
+                    }
+                }
+                await new Promise(resolve => setImmediate(resolve));
+            }
+            buffer += decoder.decode(undefined, { stream: false });
+            if (buffer.trim()) {
+                console.warn("ストリーム終了後、未処理のバッファが残っています:", buffer);
+            }
+
+            if (!streamEndedNaturally) {
+                console.warn("ストリームが終了しましたが、end_of_stream イベントを受信しませんでした。接続が途中で切断された可能性があります。");
+            }
+
+            console.log("ストリーム読み取り完了。");
+            return fullResponseText;
+
+        } catch (streamError: any) {
+            console.error("ストリーム読み取り中にエラー:", streamError);
+            throw new Error(`ストリーム読み取りエラー: ${streamError.message || streamError}`);
+        }
+    }
+
+    public async getAvailableProviders(filter?: string): Promise<string[]> {
+        return this._fetchIdentifierList("provider", filter);
+    }
+
+    public async getAvailableModels(filter?: string): Promise<string[]> {
+        return this._fetchIdentifierList("model", filter);
+    }
+
+    private async _fetchIdentifierList(identifierType: 'provider' | 'model', filter?: string): Promise<string[]> {
+        const requestUrl = `${this.backendUrl}/models`;
+        console.log(`利用可能な ${identifierType} リストを取得中${filter ? ` (Filter: '${filter}')` : ''}: ${requestUrl}`);
+
+        const payload: ModelListRequestPayload = { type: identifierType };
+        if (filter) {
+            payload.filter = filter;
+        }
+
+        try {
+            const response: Response = await fetch(requestUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                await this._handleErrorResponse(response, `${identifierType}リスト取得`).catch(_e => { });
+                return [];
+            }
+
             const identifiers = await response.json();
 
-            // レスポンスが期待通り string の配列か検証
             if (Array.isArray(identifiers) && identifiers.every((item) => typeof item === 'string')) {
                 console.log(`取得成功: ${identifierType} リスト (${identifiers.length}件)`);
                 return identifiers as string[];
             } else {
                 console.warn(`バックエンドから取得した ${identifierType} リストの形式が無効でした。`, identifiers);
-                return []; // 不正な形式の場合も空配列を返す
+                return [];
             }
         } catch (error: any) {
             console.error(`${identifierType}リストの取得中にネットワークエラー等が発生しました:`, error);
-            return []; // ネットワークエラー等でも空配列を返す
+            return [];
         }
     }
 }
 
-export { LocalAI, OnChunkCallback, StreamChunk };
+export { LocalAI, OnChunkCallback, StreamChunk, ChatRequestPayload, ModelListRequestPayload };
