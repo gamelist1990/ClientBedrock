@@ -1450,10 +1450,10 @@ data: {"error": "エラーメッセージ", "status_code": 4xx or 5xx, "provider
                                            }
                                            return; // Stop on error event
                                         }
-                                      }
+                                      } 
                                     }
                                   } catch (error) {
-                                    console.error("Error during streaming chat request:", error);
+                                    console.error("Error during stream  ing chat request:", error);
                                     if (onError) onError({ error: error.message });
                                   }
                                 }
