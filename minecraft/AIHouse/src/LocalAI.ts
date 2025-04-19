@@ -1,7 +1,7 @@
 import fetch, { Response } from 'node-fetch';
 import { TextDecoder } from 'util';
 
-const DEFAULT_BACKEND_URL = "https://neuralai-jbwc.onrender.com";
+const DEFAULT_BACKEND_URL = "http://localhost:9002";
 
 interface StreamChunk {
     delta?: string;
@@ -383,4 +383,4 @@ class LocalAI {
     }
 }
 
-export { LocalAI, OnChunkCallback, StreamChunk, ChatRequestPayload, ModelListRequestPayload };
+export { LocalAI, OnChunkCallback, StreamChunk, ChatRequestPayload, ModelListRequestPayload, DEFAULT_BACKEND_URL };

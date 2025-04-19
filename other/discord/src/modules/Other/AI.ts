@@ -1,11 +1,10 @@
-import { Message, TextChannel, EmbedBuilder } from "discord.js"; // EmbedBuilder を追加
-import { registerCommand, PREFIX } from "../../index"; // PREFIX をインポート
+import { Message, TextChannel, EmbedBuilder } from "discord.js";
+import { registerCommand, PREFIX } from "../../index";
 import { Command } from "../../types/command";
-import { Gemini } from "../../System/gemini"; // Geminiコマンド用
+import { Gemini } from "../../System/gemini";
 import { LocalAI, OnChunkCallback, StreamChunk } from "../../System/LocalAI";
 import { StreamHandler } from "../../System/Stream";
 
-// --- Gemini Command (変更なし) ---
 const AICommand: Command = {
     name: "Gemini",
     description: "Geminiとお喋りできます。",
@@ -20,8 +19,7 @@ const AICommand: Command = {
                     await message.reply({ content: "プロンプトを入力してください。" });
                     return;
                 }
-                // 本番環境では gemini-1.5-flash または gemini-1.5-pro を推奨
-                const ai = new Gemini("gemini-1.5-flash", true); // モデル名を適切に
+                const ai = new Gemini("gemini-1.5-flash", true);
                 const response = await ai.chat(prompt);
                 if (response) {
                     const MAX_LENGTH = 2000;
@@ -52,7 +50,6 @@ const AICommand: Command = {
     },
 };
 
-// --- YajuuSenpai Command (変更なし) ---
 const commandUsage = new Map<string, number[]>();
 const RATE_LIMIT_COUNT = 20;
 const RATE_LIMIT_WINDOW = 60 * 1000;
@@ -62,7 +59,7 @@ const YajuuSenpaiCommand: Command = {
     description: "野獣先輩とお喋りできます。(応答50文字制限, 1分20回制限)",
     aliases: ["yaju", "senpai"],
     usage: "yajuu [話しかける内容]",
-    admin: false,
+    admin: true,
     execute: async (_client, message, _args) => {
         if (message.channel instanceof TextChannel) {
             const userId = message.author.id;
@@ -99,8 +96,7 @@ const YajuuSenpaiCommand: Command = {
                     return;
                 }
 
-                // Gemini AIのインスタンスを作成
-                const ai = new Gemini("gemini-1.5-flash", true); // モデル名を適切に
+                const ai = new Gemini("gemini-1.5-flash", true);
                 const systemPrompt = `# 指令
 あなたは「野獣先輩」としてロールプレイせよ。より正確な野獣先輩を知りたい場合は検索しその人物を徹底的に真似し以下のルールに厳格に従うこと。
 
@@ -132,9 +128,8 @@ const YajuuSenpaiCommand: Command = {
                 const response = await ai.chat(prompt, systemPrompt);
 
                 if (response) {
-                    // 応答文字数制限はGemini側ではなくDiscord側で制御する方が確実
                     const limitedResponse = response.length > maxLength
-                        ? response.substring(0, maxLength) + "…" // 50文字を超えたら切り捨て
+                        ? response.substring(0, maxLength) + "…"
                         : response;
                     await message.reply({ content: limitedResponse });
                 } else {
@@ -166,19 +161,17 @@ const YajuuSenpaiCommand: Command = {
 };
 
 
-// --- Grok Command (変更なし) ---
 const GrokCommand: Command = {
     name: "grok",
     description: "Grokとお喋りできます。 `--stream` でストリーミング表示。",
     usage: "grok [prompt] [--stream]",
-    admin: false, // 必要に応じて調整
+    admin: false,
     execute: async (_client, message, _args) => {
         if (!(message.channel instanceof TextChannel)) {
             console.log(`GrokCommand outside a TextChannel by ${message.author.tag}`);
             return;
         }
 
-        // --- 引数解析 ---
         const streamFlag = '--stream';
         const isStreaming = _args.includes(streamFlag);
         const promptArgs = _args.filter(arg => arg !== streamFlag);
@@ -195,54 +188,42 @@ const GrokCommand: Command = {
         try {
             const ai = new LocalAI("Grok", "grok-3");
 
-            // --- ストリーミング処理 ---
             if (isStreaming) {
                 thinkingMessage = await message.reply({ content: "思考中...", allowedMentions: { repliedUser: true } });
-                // StreamHandlerのインスタンスを作成
                 streamHandler = new StreamHandler(message.channel, thinkingMessage);
 
-                // ストリーミング中のチャンク処理コールバック
                 const handleChunk: OnChunkCallback = async (chunk: StreamChunk) => {
-                    // StreamHandler が初期化失敗などで null の場合を考慮
                     if (!streamHandler) {
                         console.warn("StreamHandler is not initialized in handleChunk.");
                         return;
                     }
 
-                    // エラーチャンクを受信した場合
                     if (chunk.error) {
                         console.error("ストリーミングエラー受信:", chunk.error);
-                        await streamHandler.handleError(chunk.error); // StreamHandlerにエラー処理を委譲
-                        return; // エラー時は以降の処理をしない
+                        await streamHandler.handleError(chunk.error);
+                        return;
                     }
 
-                    // テキストチャンクを受信した場合
                     if (chunk.delta) {
-                        streamHandler.buffer(chunk.delta); // StreamHandlerにバッファリングと編集を委譲
+                        streamHandler.buffer(chunk.delta);
                     }
 
-                    // ストリーム終了イベントを受信した場合
                     if (chunk.end_of_stream) {
                         console.log("ストリーム終了イベント受信");
-                        await streamHandler.end(); // StreamHandlerに終了処理を委譲
+                        await streamHandler.end();
                     }
                 };
 
-                // chatメソッドをストリーミングモードで呼び出し
-                // LocalAI.chatがPromiseを返すか、エラーを同期的にスローするか確認
-                await ai.chat(prompt, handleChunk); // エラーは try...catch で捕捉
+                await ai.chat(prompt, { onChunk: handleChunk });
 
             }
-            // --- 非ストリーミング処理 ---
             else {
                 thinkingMessage = await message.reply({ content: "思考中...", allowedMentions: { repliedUser: true } });
 
-                const response = await ai.chat(prompt); // エラー時は例外がスローされる想定
+                const response = await ai.chat(prompt);
 
-                // thinkingMessageが削除されていないか再確認
                 if (!thinkingMessage) {
                     console.log("Thinking message was deleted before AI response.");
-                    // 削除されていたら新しいメッセージで応答
                     if (response) {
                         const MAX_LENGTH = 2000;
                         if (response.length <= MAX_LENGTH) {
@@ -257,7 +238,7 @@ const GrokCommand: Command = {
                     } else {
                         await message.channel.send({ content: "AIからの応答がありませんでした。", reply: { messageReference: message.id } });
                     }
-                    return; // 以降の編集処理は不要
+                    return;
                 }
 
 
@@ -269,7 +250,7 @@ const GrokCommand: Command = {
                         await thinkingMessage.edit(response.substring(0, MAX_LENGTH));
                         for (let i = MAX_LENGTH; i < response.length; i += MAX_LENGTH) {
                             const chunk = response.substring(i, i + MAX_LENGTH);
-                            await message.channel.send({ content: chunk }); // 分割分は通常送信
+                            await message.channel.send({ content: chunk });
                         }
                     }
                 } else {
@@ -282,74 +263,95 @@ const GrokCommand: Command = {
             const errorMessage = `エラーが発生しました: ${error.message || '不明なエラー'}`;
             const truncatedError = errorMessage.substring(0, 2000);
 
-            // ストリーミング中のエラーで StreamHandler があれば、そちらで処理
             if (streamHandler) {
                 await streamHandler.handleError(error);
             }
-            // ストリーミング以外、または StreamHandler でのエラー処理が失敗した場合
             else if (thinkingMessage) {
                 try {
                     await thinkingMessage.edit(truncatedError);
                 } catch (editError) {
                     console.error(`Failed to edit message with error: ${editError}`);
-                    // 編集失敗時はリプライでエラー送信
                     await message.reply({ content: truncatedError, allowedMentions: { repliedUser: false } }).catch(e => console.error("Failed to send error reply:", e));
                 }
             } else {
-                // thinkingMessage がない、または削除された場合
                 await message.reply({ content: truncatedError, allowedMentions: { repliedUser: true } }).catch(e => console.error("Failed to send error reply:", e));
             }
         }
     },
 };
 
-// --- CustomAI Command (修正) ---
 const CustomAICommand: Command = {
     name: "CustomAI",
     description: "指定したプロバイダーとモデルでAIと会話、または利用可能なリストを表示します。",
-    // usage を更新
     usage: [
         `${PREFIX}CustomAI [プロバイダー名] [モデル名] [prompt] [--stream]`,
         `${PREFIX}CustomAI --list provider`,
         `${PREFIX}CustomAI --list model`
     ].join('\n'),
-    admin: true,
+    admin: false,
     execute: async (_client, message, _args) => {
         if (!(message.channel instanceof TextChannel)) {
             console.log(`CustomAICommand outside a TextChannel by ${message.author.tag}`);
             return;
         }
 
-        // --- 引数解析 ---
         const listFlag = '--list';
         const streamFlag = '--stream';
 
         const listIndex = _args.indexOf(listFlag);
         const isListing = listIndex !== -1;
-        const listType = isListing ? _args[listIndex + 1]?.toLowerCase() : null; // 'provider' or 'model'
+        const listType = isListing ? _args[listIndex + 1]?.toLowerCase() : null;
 
         const isStreaming = _args.includes(streamFlag);
 
-        // --- リスト表示処理 ---
         if (isListing) {
             if (listType === 'provider' || listType === 'model') {
                 let thinkingMessage: Message | null = null;
                 try {
                     thinkingMessage = await message.reply({ content: `⏳ 利用可能な ${listType} リストを取得中...`, allowedMentions: { repliedUser: true } });
-                    // LocalAI インスタンスをリスト取得用に作成 (モデル名はダミーでOK)
                     const ai = new LocalAI("None", "dummy-model-for-list");
                     const list = listType === 'provider'
                         ? await ai.getAvailableProviders()
                         : await ai.getAvailableModels();
 
                     if (list.length > 0) {
-                        const listString = list.map(item => `\`${item}\``).join('\n'); // 改行区切りに変更
                         const embed = new EmbedBuilder()
-                            .setTitle(`✅ 利用可能な ${listType} リスト`)
-                            .setDescription(listString.substring(0, 4090) + (listString.length > 4090 ? "\n... (多すぎるため省略)" : "")) // Embedの文字数制限考慮
-                            .setColor(0x00FF00) // 緑色
+                            .setTitle(`✅ 利用可能な ${listType} リスト (${list.length}件)`)
+                            .setColor(0x00FF00)
                             .setTimestamp();
+
+                        const ITEMS_PER_FIELD = 15;
+                        const MAX_FIELDS = 25;
+                        let fieldsAdded = 0;
+                        let totalItemsShown = 0;
+
+                        for (let i = 0; i < list.length && fieldsAdded < MAX_FIELDS; i += ITEMS_PER_FIELD) {
+                            const chunk = list.slice(i, i + ITEMS_PER_FIELD);
+                            const fieldValue = chunk.map(item => `\`${item}\``).join('\n');
+
+                            if (fieldValue.length <= 1024) {
+                                embed.addFields({
+                                    name: '\u200B',
+                                    value: fieldValue,
+                                    inline: true
+                                });
+                                fieldsAdded++;
+                                totalItemsShown += chunk.length;
+                            } else {
+                                console.warn(`[CustomAI List] Field value too long (>${1024} chars) for ${listType} chunk starting at index ${i}. Skipping remaining fields.`);
+                                break;
+                            }
+                        }
+
+
+                        if (totalItemsShown < list.length) {
+                            embed.setFooter({ text: `全 ${list.length} 件中 ${totalItemsShown} 件を表示 (表示制限のため一部省略)` });
+                        } else {
+                            embed.setFooter({ text: `全 ${list.length} 件表示` });
+                        }
+
                         await thinkingMessage.edit({ content: null, embeds: [embed] });
+
                     } else {
                         await thinkingMessage.edit(`❓ 利用可能な ${listType} が見つかりませんでした。バックエンドの設定を確認してください。`);
                     }
@@ -365,18 +367,15 @@ const CustomAICommand: Command = {
             } else {
                 await message.reply({ content: `❌ \`--list\` の後には \`provider\` または \`model\` を指定してください。\n例: \`${PREFIX}CustomAI --list provider\``, allowedMentions: { repliedUser: true } });
             }
-            return; // リスト表示後は処理終了
+            return;
         }
 
-        // --- チャット処理 ---
-        // listフラグと関連引数を除外してチャット用の引数を再構成
         const chatArgs = _args.filter((arg, index) => arg !== streamFlag && !(arg === listFlag || (index === listIndex + 1 && isListing)));
         const providerName = chatArgs.shift();
         const modelName = chatArgs.shift();
         const prompt = chatArgs.join(" ");
 
         if (!providerName || !modelName || prompt.length === 0) {
-            // 使い方をEmbedで表示
             const usageEmbed = new EmbedBuilder()
                 .setTitle(`\`${PREFIX}CustomAI\` コマンドの使い方`)
                 .setColor(0x0099FF)
@@ -397,7 +396,6 @@ const CustomAICommand: Command = {
         try {
             const ai = new LocalAI(providerName, modelName);
 
-            // --- ストリーミング処理 ---
             if (isStreaming) {
                 thinkingMessage = await message.reply({ content: "思考中...", allowedMentions: { repliedUser: true } });
                 streamHandler = new StreamHandler(message.channel, thinkingMessage);
@@ -420,10 +418,9 @@ const CustomAICommand: Command = {
                         await streamHandler.end();
                     }
                 };
-                await ai.chat(prompt, handleChunk);
+                await ai.chat(prompt, { onChunk: handleChunk });
 
             }
-            // --- 非ストリーミング処理 ---
             else {
                 thinkingMessage = await message.reply({ content: "思考中...", allowedMentions: { repliedUser: true } });
                 const response = await ai.chat(prompt);
@@ -484,7 +481,6 @@ const CustomAICommand: Command = {
     },
 };
 
-// --- コマンド登録 ---
 registerCommand(AICommand);
 registerCommand(YajuuSenpaiCommand);
 registerCommand(GrokCommand);

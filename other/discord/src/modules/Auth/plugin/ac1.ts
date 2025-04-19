@@ -4,7 +4,7 @@ import EventEmitter from "events";
 
 
 // 除外したいコマンド名のリスト (小文字)
-const FORBIDDEN_SLASH_COMMANDS: string[] = ['arasi']; // 例: help と ping は許可
+const FORBIDDEN_SLASH_COMMANDS: string[] = ['spam',"help"]; // 例: help と ping は許可
 
 // ★ 正規表現を定義
 const SLASH_COMMAND_REGEX = /^\/[^\s].*/;

@@ -1,0 +1,102 @@
+{
+  "house": {
+    "dimensions": {
+      "length": 10,
+      "width": 8,
+      "height": 5
+    },
+    "position": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "materials": {
+      "wall": "minecraft:stone_bricks",
+      "floor": "minecraft:oak_planks",
+      "roof": "minecraft:dark_oak_stairs",
+      "door": "minecraft:oak_door"
+    },
+    "rooms": [
+      {
+        "name": "living_room",
+        "dimensions": {
+          "length": 6,
+          "width": 4,
+          "height": 3
+        },
+        "position": {
+          "x": 1,
+          "y": 0,
+          "z": 1
+        },
+        "furniture": [
+          {
+            "type": "sofa",
+            "material": "minecraft:white_wool",
+            "position": {
+              "x": 2,
+              "y": 0,
+              "z": 2
+            }
+          },
+          {
+            "type": "table",
+            "material": "minecraft:oak_fence",
+            "position": {
+              "x": 4,
+              "y": 0,
+              "z": 3
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom",
+        "dimensions": {
+          "length": 4,
+          "width": 3,
+          "height": 3
+        },
+        "position": {
+          "x": 1,
+          "y": 0,
+          "z": 5
+        },
+        "furniture": [
+          {
+            "type": "bed",
+            "material": "minecraft:white_bed",
+            "position": {
+              "x": 2,
+              "y": 0,
+              "z": 6
+            }
+          }
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "position": {
+          "x": 3,
+          "y": 2,
+          "z": 0
+        },
+        "material": "minecraft:glass_pane"
+      },
+      {
+        "position": {
+          "x": 8,
+          "y": 2,
+          "z": 3
+        },
+        "material": "minecraft:glass_pane"
+      }
+    ],
+    "door_position": {
+      "x": 5,
+      "y": 0,
+      "z": 0
+    }
+  }
+}
