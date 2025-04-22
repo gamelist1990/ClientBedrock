@@ -1,142 +1,183 @@
-import { EmbedBuilder, TextChannel } from "discord.js";
-import { currentConfig, PREFIX, saveConfig, registerCommand } from "../..";
+import { EmbedBuilder, TextChannel, User, Client } from "discord.js";
+import { currentConfig, PREFIX, saveConfig, registerCommand, isAdmin, isGlobalAdmin } from "../..";
 import { Command } from "../../types/command";
-
-
-//AdminはDataBaseを使わず 調節configに保存
-
-
-const adminCommandBase: Command = {
+async function fetchAndFormatUser(client: Client, userId: string): Promise<string> {
+  try {
+    const user = await client.users.fetch(userId);
+    return `• ${user.tag} (\`${user.id}\`)`;
+  } catch {
+    return `• 不明なユーザー (\`${userId}\`)`;
+  }
+}
+async function createAdminListEmbed(client: Client, title: string, adminIds: string[]): Promise<EmbedBuilder> {
+  const embed = new EmbedBuilder()
+    .setColor(0x0099ff)
+    .setTitle(title);
+  if (!adminIds || adminIds.length === 0) {
+    embed.setDescription("現在、管理者は登録されていません。");
+  } else {
+    const adminListPromises = adminIds.map(id => fetchAndFormatUser(client, id));
+    const adminListFormatted = await Promise.all(adminListPromises);
+    embed.setDescription(adminListFormatted.join("\n"));
+  }
+  return embed;
+}
+const adminCommand: Command = {
   name: "admin",
-  description: "管理者設定を管理します。",
+  description: "管理者設定を管理します (グローバル / ギルド)。",
   admin: true,
-  usage: "admin <add|remove|list> [userID]",
+  usage: "admin <global|guild> <add|remove|list> [userID]",
+  aliases: ['admins'],
   execute: async (client, message, args) => {
-    const subCommand = args[0]?.toLowerCase();
-    const targetUserId = args[1];
-    let config = currentConfig;
-    if (!config.admins) {
-      config.admins = [];
+    const scope = args[0]?.toLowerCase();
+    const action = args[1]?.toLowerCase();
+    const targetUserId = args[2];
+    if (!scope || (scope !== 'global' && scope !== 'guild')) {
+      await message.reply(`❌ スコープが無効です。\`global\` または \`guild\` を指定してください。\n使い方: \`${PREFIX}${adminCommand.usage}\``);
+      return;
     }
-
-    switch (subCommand) {
-      case "add":
-        if (!targetUserId) {
-          await message.reply(
-            `❌ 追加するユーザーのIDを指定してください。\n使い方: \`${PREFIX}admin add <userID>\``
-          );
+    if (!action || !['add', 'remove', 'list'].includes(action)) {
+      await message.reply(`❌ アクションが無効です。\`add\`, \`remove\`, または \`list\` を指定してください。\n使い方: \`${PREFIX}${adminCommand.usage}\``);
+      return;
+    }
+    if ((action === 'add' || action === 'remove') && !targetUserId) {
+      await message.reply(`❌ ${action === 'add' ? '追加' : '削除'}するユーザーのIDを指定してください。\n使い方: \`${PREFIX}admin ${scope} ${action} <userID>\``);
+      return;
+    }
+    if (targetUserId && !/^\d+$/.test(targetUserId)) {
+      await message.reply(`❌ 無効なユーザーID形式です。数字のみで指定してください。`);
+      return;
+    }
+    const authorId = message.author.id;
+    let guildId: string | undefined;
+    let canManage = false;
+    if (scope === 'guild') {
+      if (!message.guild) {
+        await message.reply("❌ ギルド管理者設定はサーバー内でのみ実行できます。");
+        return;
+      }
+      guildId = message.guild.id;
+      canManage = isAdmin(authorId, guildId);
+      if (!canManage) {
+        await message.reply('❌ このギルドの管理者を設定する権限がありません。');
+        return;
+      }
+    } else {
+      canManage = isGlobalAdmin(authorId);
+      if (!canManage) {
+        await message.reply('❌ グローバル管理者を設定する権限がありません。');
+        return;
+      }
+    }
+    if (!currentConfig.globalAdmins) currentConfig.globalAdmins = [];
+    if (!currentConfig.guildAdmins) currentConfig.guildAdmins = {};
+    if (guildId && !currentConfig.guildAdmins[guildId]) {
+      currentConfig.guildAdmins[guildId] = [];
+    }
+    let user: User | null = null;
+    if (targetUserId) {
+      try {
+        user = await client.users.fetch(targetUserId);
+      } catch {
+        if (action === 'add' || action === 'remove') {
+          await message.reply(`❌ 指定されたユーザーID ${targetUserId} のユーザーを見つけられませんでした。IDを確認してください。`);
           return;
         }
-        if (!/^\d+$/.test(targetUserId)) {
-          await message.reply(
-            `❌ 無効なユーザーID形式です。数字のみで指定してください。`
-          );
-          return;
-        }
-        if (config.admins.includes(targetUserId)) {
-          await message.reply(
-            `ℹ️ ユーザーID ${targetUserId} は既に管理者です。`
-          );
-          return;
-        }
-        try {
-          const user = await client.users.fetch(targetUserId);
-          config.admins.push(targetUserId);
-          const success = await saveConfig(config);
-          if (success) {
-            await message.reply(
-              `✔ ユーザー ${user.tag} (${targetUserId}) を管理者に追加しました。`
-            );
-          } else {
-            await message.reply("❌ 設定の保存中にエラーが発生しました。");
-            config.admins.pop();
+      }
+    }
+    try {
+      switch (action) {
+        case 'add':
+          if (!user || !targetUserId) {
+            await message.reply(`❌ 追加するユーザーを特定できませんでした。`);
+            return;
           }
-        } catch {
-          await message.reply(
-            `❌ 指定されたユーザーID ${targetUserId} のユーザーを見つけられませんでした。IDを確認してください。`
-          );
-        }
-        break;
-
-      case "remove":
-        if (!targetUserId) {
-          await message.reply(
-            `❌ 削除するユーザーのIDを指定してください。\n使い方: \`${PREFIX}admin remove <userID>\``
-          );
-          return;
-        }
-        if (!/^\d+$/.test(targetUserId)) {
-          await message.reply(`❌ 無効なユーザーID形式です。`);
-          return;
-        }
-        if (message.author.id === targetUserId) {
-          await message.reply(
-            "❌ 自分自身を管理者から削除することはできません。"
-          );
-          return;
-        }
-        const indexToRemove = config.admins.indexOf(targetUserId);
-        if (indexToRemove === -1) {
-          await message.reply(
-            `ℹ️ ユーザーID ${targetUserId} は管理者リストに存在しません。`
-          );
-          return;
-        }
-
-        const removedId = config.admins.splice(indexToRemove, 1)[0];
-        const removeSuccess = await saveConfig(config);
-        try {
-          const user = await client.users.fetch(targetUserId);
-          if (removeSuccess) {
-            await message.reply(
-              `✔ ユーザー ${user.tag} (${targetUserId}) を管理者から削除しました。`
-            );
+          if (scope === 'global') {
+            if (currentConfig.globalAdmins!.includes(targetUserId)) {
+              await message.reply(`ℹ️ ユーザー ${user.tag} (${targetUserId}) は既にグローバル管理者です。`); return;
+            }
+            currentConfig.globalAdmins!.push(targetUserId);
+            if (await saveConfig(currentConfig)) {
+              await message.reply(`✔ ユーザー ${user.tag} (${targetUserId}) をグローバル管理者に追加しました。`);
+            } else {
+              currentConfig.globalAdmins!.pop();
+              await message.reply("❌ 設定の保存中にエラーが発生しました。");
+            }
           } else {
-            await message.reply("❌ 設定の保存中にエラーが発生しました。");
-            config.admins.splice(indexToRemove, 0, removedId);
+            if (!guildId) return;
+            if (currentConfig.guildAdmins![guildId]!.includes(targetUserId)) {
+              await message.reply(`ℹ️ ユーザー ${user.tag} (${targetUserId}) は既にこのギルドの管理者です。`); return;
+            }
+            currentConfig.guildAdmins![guildId]!.push(targetUserId);
+            if (await saveConfig(currentConfig)) {
+              await message.reply(`✔ ユーザー ${user.tag} (${targetUserId}) を ${message.guild?.name} の管理者に追加しました。`);
+            } else {
+              currentConfig.guildAdmins![guildId]!.pop();
+              await message.reply("❌ 設定の保存中にエラーが発生しました。");
+            }
           }
-        } catch {
-          if (removeSuccess) {
-            await message.reply(
-              `✔ ユーザーID ${targetUserId} を管理者から削除しました。(ユーザー情報の取得失敗)`
-            );
+          break;
+        case 'remove':
+          if (!user || !targetUserId) {
+            await message.reply(`❌ 削除するユーザーを特定できませんでした。`); return;
+          }
+          if (scope === 'global' && authorId === targetUserId) {
+            await message.reply("❌ 自分自身をグローバル管理者から削除することはできません。"); return;
+          }
+          let adminList: string[] | undefined;
+          let listName: string;
+          let successMsg: string;
+          if (scope === 'global') {
+            adminList = currentConfig.globalAdmins;
+            listName = "グローバル管理者";
+            successMsg = `✔ ユーザー ${user.tag} (${targetUserId}) をグローバル管理者から削除しました。`;
           } else {
-            await message.reply("❌ 設定の保存中にエラーが発生しました。");
-            config.admins.splice(indexToRemove, 0, removedId);
+            if (!guildId) return;
+            adminList = currentConfig.guildAdmins![guildId];
+            listName = `${message.guild?.name} の管理者`;
+            successMsg = `✔ ユーザー ${user.tag} (${targetUserId}) を ${message.guild?.name} の管理者から削除しました。`;
           }
-        }
-        break;
-
-      case "list":
-        const embed = new EmbedBuilder()
-          .setColor(0x0099ff)
-          .setTitle("👑 管理者リスト");
-        if (!config.admins || config.admins.length === 0) {
-          embed.setDescription("現在、管理者は登録されていません。");
-        } else {
-          const adminUsersPromises = config.admins.map((id) =>
-            client.users.fetch(id).catch(() => ({ id, tag: "不明なユーザー" }))
-          );
-          const adminUsers = await Promise.all(adminUsersPromises);
-          const adminList = adminUsers
-            .map((u) => `• ${u.tag} (\`${u.id}\`)`)
-            .join("\n");
-          embed.setDescription(adminList);
-        }
-        if (message.channel instanceof TextChannel) {
-          await message.channel.send({ embeds: [embed] });
-        }
-
-        break;
-
-      default:
-        await message.reply(
-          `❌ 無効なサブコマンドです。\n使い方: \`${PREFIX}admin <add|remove|list> [userID]\``
-        );
-        break;
+          if (!adminList) {
+            await message.reply(`❌ ${listName}リストが見つかりません。`); return;
+          }
+          const indexToRemove = adminList.indexOf(targetUserId);
+          if (indexToRemove === -1) {
+            await message.reply(`ℹ️ ユーザーID ${targetUserId} は${listName}リストに存在しません。`); return;
+          }
+          const removedId = adminList.splice(indexToRemove, 1)[0];
+          if (await saveConfig(currentConfig)) {
+            await message.reply(successMsg);
+          } else {
+            adminList.splice(indexToRemove, 0, removedId);
+            await message.reply("❌ 設定の保存中にエラーが発生しました。");
+          }
+          break;
+        case 'list':
+          let listTitle: string;
+          let idsToList: string[] | undefined;
+          if (scope === 'global') {
+            listTitle = "👑 グローバル管理者リスト";
+            idsToList = currentConfig.globalAdmins;
+          } else {
+            if (!guildId) return;
+            listTitle = `👑 ${message.guild?.name} の管理者リスト`;
+            idsToList = currentConfig.guildAdmins![guildId];
+          }
+          if (!idsToList) {
+            await message.reply(`❌ ${scope === 'global' ? 'グローバル' : 'ギルド'} 管理者リストの取得に失敗しました。`); return;
+          }
+          const embed = await createAdminListEmbed(client, listTitle, idsToList);
+          if (message.channel instanceof TextChannel) {
+            await message.channel.send({ embeds: [embed] });
+          } else {
+            await message.reply({ embeds: [embed] });
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Admin command execution error (Scope: ${scope}, Action: ${action}, User: ${targetUserId}):`, error);
+      await message.reply('❌ コマンドの実行中に予期せぬエラーが発生しました。');
     }
   },
 };
-
-registerCommand(adminCommandBase);
-
+registerCommand(adminCommand);
