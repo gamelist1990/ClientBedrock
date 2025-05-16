@@ -51,7 +51,7 @@ export interface PlayerData {
   isOnline: boolean;
 }
 export class System extends EventEmitter {
-  private server: Server | null = null;
+  public server: Server | null = null;
   public commands: Record<string, Command> = {};
   private playerDataCache: PlayerData[] = [];
   private isShuttingDown = false;
@@ -531,7 +531,6 @@ export class System extends EventEmitter {
       setTimeout(() => process.exit(0), 500);
     } catch (err) {
       console.error("Error during graceful shutdown:", err);
-      process.exit(1);
     }
   }
   setupProcessListeners(): void {
@@ -539,14 +538,33 @@ export class System extends EventEmitter {
     process.on("SIGINT", () => this._gracefulShutdown("SIGINT"));
     process.removeAllListeners("SIGTERM");
     process.on("SIGTERM", () => this._gracefulShutdown("SIGTERM"));
+
     process.removeAllListeners("unhandledRejection");
     process.on("unhandledRejection", (reason, promise) => {
-      console.error("Unhandled Rejection at:", promise, "reason:", reason);
-      this._gracefulShutdown("UnhandledRejection").catch(() => process.exit(1));
+      console.error("Unhandled Rejection at:", promise);
+      if (reason instanceof Error) {
+        console.error("Reason (Error):", reason.name, reason.message, reason.stack);
+        if (reason.name === "RequestTimeoutError") {
+          // null
+        } else {
+          this._gracefulShutdown("UnhandledRejection").catch(() => process.exit(1));
+        }
+      } else {
+        // reason が Error インスタンスでない場合 (例: 文字列やnullなど)
+        console.error("Reason (Non-Error):", reason);
+        logger.error(
+          `[System] Unhandled Rejection with a non-error reason: ${String(reason)}. Attempting graceful shutdown.`
+        );
+        this._gracefulShutdown("UnhandledRejection (Non-Error Reason)").catch(() => process.exit(1));
+      }
     });
+
     process.removeAllListeners("uncaughtException");
     process.on("uncaughtException", (error) => {
       console.error("Uncaught Exception:", error);
+      logger.error(
+        `[System] Uncaught Exception: ${error.name} - ${error.message}. Attempting graceful shutdown.`
+      );
       this._gracefulShutdown("UncaughtException").catch(() => process.exit(1));
     });
   }

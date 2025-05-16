@@ -10,9 +10,7 @@ import './Game/OXGame'
 
 
 //import './Other/yajyu'
-import './Other/AI'
 import './Other/shareTool'
 import './Other/uuid'
 import './Other/hive'
-import './Other/ban'
 import './Other/lockapp'

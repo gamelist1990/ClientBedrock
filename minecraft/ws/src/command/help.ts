@@ -1,6 +1,6 @@
-import { System } from './../backend';
+import { System } from '..';
 import { Player } from 'socket-be';
-import { Command, COMMAND_PREFIX, system } from '../backend';
+import { Command, COMMAND_PREFIX, system } from '..';
 
 
 function showHelp(player: Player, commands: Record<string, Command>, commandPrefix: string, pageOrCommand: string | number = 1) {
