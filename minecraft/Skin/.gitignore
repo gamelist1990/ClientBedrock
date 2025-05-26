@@ -6,3 +6,4 @@ build/
 out/
 *.exe
 src/MCEnc
+dist-electron

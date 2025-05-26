@@ -1,0 +1,232 @@
+/* Base.css - シンプルでホワイトベースのデザイン */
+
+/* リセット & 基本スタイル */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+:root {
+    /* メインカラー */
+    --primary: #4CAF50;
+    --primary-light: #81C784;
+    --primary-dark: #388E3C;
+    
+    /* アクセントカラー */
+    --accent: #FF9800;
+    --accent-light: #FFB74D;
+    --accent-dark: #F57C00;
+    
+    /* テキストカラー */
+    --text-primary: #333333;
+    --text-secondary: #757575;
+    --text-hint: #9E9E9E;
+    
+    /* バックグラウンドカラー */
+    --bg-main: #FFFFFF;
+    --bg-paper: #F5F5F5;
+    --bg-card: #FFFFFF;
+    
+    /* ボーダーカラー */
+    --border-light: #E0E0E0;
+    --border-medium: #BDBDBD;
+    
+    /* ステータスカラー */
+    --success: #4CAF50;
+    --warning: #FF9800;
+    --error: #F44336;
+    --info: #2196F3;
+    
+    /* スペーシング */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    
+    /* シャドウ */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+    
+    /* サイズ */
+    --sidebar-width: 240px;
+    --header-height: 60px;
+    --border-radius: 8px;
+}
+
+html, body {
+    height: 100%;
+    font-size: 16px;
+    color: var(--text-primary);
+    background-color: var(--bg-paper);
+    line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.1rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+p {
+    margin-bottom: var(--space-md);
+    color: var(--text-secondary);
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+button {
+    cursor: pointer;
+    font-family: inherit;
+}
+
+ul, ol {
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+}
+
+/* アクセシビリティ */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999;
+}
+
+.skip-link:focus {
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    padding: var(--space-md);
+    background: var(--bg-main);
+    color: var(--primary);
+    font-weight: 600;
+    border: 2px solid var(--primary);
+    outline: none;
+}
+
+/* フォーカス表示 */
+:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* スクロールバー */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-paper);
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--border-medium);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-hint);
+}
+
+/* ユーティリティクラス */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.ml-0 { margin-left: 0; }
+.mr-0 { margin-right: 0; }
+
+.mt-1 { margin-top: var(--space-sm); }
+.mb-1 { margin-bottom: var(--space-sm); }
+.ml-1 { margin-left: var(--space-sm); }
+.mr-1 { margin-right: var(--space-sm); }
+
+.mt-2 { margin-top: var(--space-md); }
+.mb-2 { margin-bottom: var(--space-md); }
+.ml-2 { margin-left: var(--space-md); }
+.mr-2 { margin-right: var(--space-md); }
+
+.mt-3 { margin-top: var(--space-lg); }
+.mb-3 { margin-bottom: var(--space-lg); }
+.ml-3 { margin-left: var(--space-lg); }
+.mr-3 { margin-right: var(--space-lg); }
+
+.mt-4 { margin-top: var(--space-xl); }
+.mb-4 { margin-bottom: var(--space-xl); }
+.ml-4 { margin-left: var(--space-xl); }
+.mr-4 { margin-right: var(--space-xl); }
+
+.p-0 { padding: 0; }
+.p-1 { padding: var(--space-sm); }
+.p-2 { padding: var(--space-md); }
+.p-3 { padding: var(--space-lg); }
+.p-4 { padding: var(--space-xl); }
+
+.d-flex { display: flex; }
+.d-block { display: block; }
+.d-inline-block { display: inline-block; }
+.d-none { display: none; }
+
+.flex-row { flex-direction: row; }
+.flex-column { flex-direction: column; }
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.align-start { align-items: flex-start; }
+.align-center { align-items: center; }
+.align-end { align-items: flex-end; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-nowrap { flex-wrap: nowrap; }
+.flex-1 { flex: 1; }
+.flex-auto { flex: 0 0 auto; }
+
+.w-100 { width: 100%; }
+.h-100 { height: 100%; }

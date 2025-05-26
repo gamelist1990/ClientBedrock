@@ -1,48 +1,29 @@
 {
-    "include": [
-        "src/**/*.ts"
+  "include": [
+    "src/main.ts",
+    "src/preload.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/renderer/**/*"
+  ],
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": [
+      "ES2020",
+      "DOM"
     ],
-    "exclude": [
-        "node_modules"
-    ],
-    "watchOptions": {
-        "excludeDirectories": [
-            "node_modules"
-        ]
-    },
-    "libChecking": true,
-    "compilerOptions": {
-        "target": "ESNext",
-        "module": "ESNext",
-        "moduleResolution": "node",
-        "lib": [
-            "ESNext",
-            "DOM"
-        ],
-        "typeRoots": [
-            "./node_modules/@minecraft",
-            "./node_modules/@types"
-        ],
-        "noEmit": false,
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true,
-        "strict": true,
-        "allowJs": true,
-        "checkJs": true,
-        "outDir": "./src/scripts",
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictPropertyInitialization": true,
-        "strictBindCallApply": true,
-        "noImplicitReturns": false,
-        "noUnusedLocals": true,
-        "noImplicitAny": false,
-        "alwaysStrict": true,
-        "noFallthroughCasesInSwitch": true,
-        "noImplicitThis": true,
-        "noUnusedParameters": true,
-        "sourceMap": false,
-        "removeComments": true,
-        "allowSyntheticDefaultImports": true
-    }
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "declaration": false
+  }
 }

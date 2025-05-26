@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Skin Injector</title>
+    <meta name="description" content="Minecraft Bedrock Edition スキンパック置換ツール">
+    <meta name="author" content="Minecraft Skin Injector">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- アクセシビリティスキップリンク -->
+    <a href="#main-content" class="skip-link">メインコンテンツへスキップ</a>
+
+    <div class="app-container">
+        <!-- サイドバーナビゲーション -->
+        <aside class="sidebar" role="navigation" aria-label="進行状況">
+            <div class="sidebar-header">
+                <div class="app-logo">
+                    <span class="logo-icon">🧊</span>
+                    <h1 class="app-title">Skin Injector</h1>
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                <nav class="step-nav">
+                    <div class="step-item active" data-step="1" tabindex="0" role="button" aria-pressed="true">
+                        <div class="step-indicator">
+                            <span class="step-number">1</span>
+                        </div>
+                        <div class="step-label">
+                            <span>対象選択</span>
+                            <small>置き換えるスキンパック</small>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item" data-step="2" tabindex="0" role="button" aria-pressed="false">
+                        <div class="step-indicator">
+                            <span class="step-number">2</span>
+                        </div>
+                        <div class="step-label">
+                            <span>ソース選択</span>
+                            <small>新しいリソース</small>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item" data-step="3" tabindex="0" role="button" aria-pressed="false">
+                        <div class="step-indicator">
+                            <span class="step-number">3</span>
+                        </div>
+                        <div class="step-label">
+                            <span>実行</span>
+                            <small>処理の開始</small>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator" id="statusIndicator" role="status" aria-live="polite">
+                    <span class="status-icon">🟢</span>
+                    <span id="statusText">準備完了</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- メインコンテンツエリア -->
+        <main class="main-content" id="main-content" role="main">
+            <div class="content-header">
+                <h2 id="contentTitle">対象の選択</h2>
+                <p id="contentDescription">置き換えたいスキンパックを選択してください</p>
+            </div>
+
+            <!-- ステップ1: 対象選択 -->
+            <section class="step-content" id="step1">
+                <div class="card-grid">
+                    <div class="card" data-target="installed" tabindex="0" role="button">
+                        <div class="card-icon">📥</div>
+                        <div class="card-body">
+                            <h3>インストール済み</h3>
+                            <p>PCにインストール済みのスキンパックから選択</p>
+                            <div class="card-tags">
+                                <span class="tag">自動検出</span>
+                                <span class="tag">Windows対応</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" data-target="mcpack" tabindex="0" role="button">
+                        <div class="card-icon">📦</div>
+                        <div class="card-body">
+                            <h3>MCPACKファイル</h3>
+                            <p>.mcpackファイルを直接指定して処理</p>
+                            <div class="card-tags">
+                                <span class="tag">ファイル選択</span>
+                                <span class="tag">ZIP対応</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" data-target="folder" tabindex="0" role="button">
+                        <div class="card-icon">📁</div>
+                        <div class="card-body">
+                            <h3>解凍済みフォルダ</h3>
+                            <p>既に解凍されたスキンパックフォルダ</p>
+                            <div class="card-tags">
+                                <span class="tag">フォルダ選択</span>
+                                <span class="tag">カスタム</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- インストール済みパックリスト -->
+                <div class="section" id="installedPacksList" style="display: none;">
+                    <div class="section-header">
+                        <h3>インストール済みスキンパック</h3>
+                        <button class="btn btn-small" id="refreshPacksBtn">
+                            <i class="fas fa-sync-alt"></i> 更新
+                        </button>
+                    </div>
+                    <div class="pack-list" id="packItems"></div>
+                </div>
+
+                <!-- 選択された対象表示 -->
+                <div class="selected-item" id="selectedTarget" style="display: none;">
+                    <div class="selected-header">
+                        <span class="selected-icon">✅</span>
+                        <h3>選択された対象</h3>
+                    </div>
+                    <div class="selected-details">
+                        <div class="detail-row">
+                            <span class="detail-label">名前:</span>
+                            <span class="detail-value" id="targetName"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">パス:</span>
+                            <span class="detail-value" id="targetPath"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ステップ2: ソース選択 -->
+            <section class="step-content" id="step2" style="display: none;">
+                <div class="card-grid grid-2">
+                    <div class="card" data-source="folder" tabindex="0" role="button">
+                        <div class="card-icon">📁</div>
+                        <div class="card-body">
+                            <h3>解凍済みフォルダ</h3>
+                            <p>既存の解凍済みリソースパックフォルダを選択</p>
+                            <div class="card-tags">
+                                <span class="tag">フォルダ選択</span>
+                                <span class="tag">manifest対応</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" data-source="web" tabindex="0" role="button">
+                        <div class="card-icon">🌐</div>
+                        <div class="card-body">
+                            <h3>Web生成ツール</h3>
+                            <p>Webツールで生成した.mcpackファイルを使用</p>
+                            <div class="card-tags">
+                                <span class="tag">外部ツール</span>
+                                <span class="tag">自動生成</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 選択されたソース表示 -->
+                <div class="selected-item" id="selectedSource" style="display: none;">
+                    <div class="selected-header">
+                        <span class="selected-icon">✅</span>
+                        <h3>選択されたソース</h3>
+                    </div>
+                    <div class="selected-details">
+                        <div class="detail-row">
+                            <span class="detail-label">名前:</span>
+                            <span class="detail-value" id="sourceName"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">パス:</span>
+                            <span class="detail-value" id="sourcePath"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ステップ3: 処理実行 -->
+            <section class="step-content" id="step3" style="display: none;">
+                <div class="summary">
+                    <h3>処理内容の確認</h3>
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <span class="summary-icon">🎯</span>
+                            <div class="summary-content">
+                                <h4>対象</h4>
+                                <p id="summaryTarget">未選択</p>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-icon">📦</span>
+                            <div class="summary-content">
+                                <h4>ソース</h4>
+                                <p id="summarySource">未選択</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <span class="alert-icon">⚠️</span>
+                    <div class="alert-content">
+                        <h4>重要な注意事項</h4>
+                        <p>この操作は元に戻すことができません。対象のスキンパックの内容が完全に置き換えられます。</p>
+                    </div>
+                </div>
+                
+                <div class="action-area">
+                    <button class="btn btn-primary" id="startProcessBtn">
+                        <span class="btn-icon">🚀</span> 処理を開始
+                    </button>
+                </div>
+            </section>
+            
+            <!-- 進行状況セクション -->
+            <section class="step-content" id="progressSection" style="display: none;">
+                <div class="progress-container">
+                    <h3>処理中...</h3>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">処理を開始しています...</div>
+                    <div class="progress-log" id="progressLog"></div>
+                </div>
+            </section>
+            
+            <!-- 結果セクション -->
+            <section class="step-content" id="resultSection" style="display: none;">
+                <div class="result-container">
+                    <div id="resultIcon" class="result-icon"></div>
+                    <h3 id="resultTitle"></h3>
+                    <p id="resultMessage"></p>
+                    <button class="btn" id="newProcessBtn">
+                        <i class="fas fa-redo"></i> 新しい処理を開始
+                    </button>
+                </div>
+            </section>
+
+            <!-- ナビゲーションコントロール -->
+            <div class="navigation-controls">
+                <button class="btn btn-outline" id="prevBtn" style="display: none;">
+                    <i class="fas fa-arrow-left"></i> 戻る
+                </button>
+                <button class="btn btn-primary" id="nextBtn" style="display: none;">
+                    次へ <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

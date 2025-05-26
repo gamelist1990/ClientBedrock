@@ -1,35 +1,59 @@
 {
-  "name": "skin",
-  "version": "0.0.1",
+  "name": "skin-injector-electron",
+  "version": "1.0.0",
   "author": "Koukunn_",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gamelist1990/PEXclient.git"
   },
-  "main": "null",
+  "main": "dist/main.js",
+  "homepage": "./",
   "dependencies": {
-    "@types/node": "^22.13.10",
     "adm-zip": "^0.5.16",
-    "chalk": "^5.4.1",
-    "cli-table3": "^0.6.5",
-    "inquirer": "^12.6.1",
-    "open": "^10.1.2"
+    "electron-log": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/adm-zip": "^0.5.7",
+    "electron": "^32.2.6",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
   },
   "bugs": {
     "url": "https://github.com/gamelist1990/PEXclient/issues"
   },
-  "description": "更新が最新のワールドを表示できます",
-  "homepage": "https://github.com/gamelist1990/PEXclient#readme",
+  "description": "Minecraft Bedrock スキンパック置き換えツール",
   "license": "MIT",
   "scripts": {
-    "auto": "npm run linux && npm run linux-arm && npm run windows-64 && npm run macOS-64 && npm run macOS-arm",
-    "linux": "bun build src/index.ts --compile --target=bun-linux-x64 --minify --outfile skin_linux --minify",
-    "linux-arm": "bun build src/index.ts --compile --target=bun-linux-arm64 --minify --outfile skin_linuxArm --minify",
-    "windows-64": "bun build src/index.ts --compile --target=bun-windows-x64 --minify --outfile skin_windows --minify",
-    "macOS-64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --minify --outfile skin_mac64 --minify",
-    "macOS-arm": "bun build src/index.ts --compile --target=bun-darwin-arm64 --minify --outfile skin_macArm --minify"
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never"
   },
-  "devDependencies": {
-    "@types/adm-zip": "^0.5.7"
+  "build": {
+    "appId": "com.skinInjector.electron",
+    "productName": "Skin Injector",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "src/renderer/**/*",
+      "node_modules/**/*",
+      "MCEnc/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": false,
+      "include": "installer.nsh"
+    }
   }
 }
