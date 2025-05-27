@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Electron App - 初心者向けサンプル</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🚀 Simple Electron App</h1>
+            <p>初心者向けのElectronアプリケーションサンプル</p>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="main-content">
+        <!-- サイドバー -->
+        <nav class="sidebar">
+            <h3>📋 サンプル機能</h3>
+            <ul class="feature-list">
+                <li><button id="btn-app-info" class="feature-btn">📱 アプリ情報</button></li>
+                <li><button id="btn-message-box" class="feature-btn">💬 メッセージ表示</button></li>
+                <li><button id="btn-file-dialog" class="feature-btn">📁 ファイル選択</button></li>
+                <li><button id="btn-save-dialog" class="feature-btn">💾 保存ダイアログ</button></li>
+                <li><button id="btn-notification" class="feature-btn">🔔 通知</button></li>
+                <li><button id="btn-theme-toggle" class="feature-btn">🎨 テーマ切替</button></li>
+            </ul>
+        </nav>
+
+        <!-- コンテンツエリア -->
+        <section class="content-area">
+            <!-- ウェルカムセクション -->
+            <div class="welcome-section">
+                <h2>🎉 Electronアプリへようこそ！</h2>
+                <p>このアプリケーションはElectronの基本的な機能を学ぶためのサンプルです。</p>
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h3>🔧 主な機能</h3>
+                        <ul>
+                            <li>メインプロセスとレンダラープロセスの通信</li>
+                            <li>ダイアログの表示</li>
+                            <li>ファイル操作</li>
+                            <li>通知機能</li>
+                            <li>レスポンシブデザイン</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h3>📚 学習ポイント</h3>
+                        <ul>
+                            <li>TypeScriptでの開発</li>
+                            <li>IPCを使った安全な通信</li>
+                            <li>モダンなUI/UX</li>
+                            <li>セキュリティベストプラクティス</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 結果表示エリア -->
+            <div class="result-section">
+                <h3>📊 結果表示</h3>
+                <div id="result-area" class="result-area">
+                    <p class="placeholder">左のサイドバーから機能を選択してください</p>
+                </div>
+            </div>
+
+            <!-- ログセクション -->
+            <div class="log-section">
+                <h3>📝 アクションログ</h3>
+                <div id="log-area" class="log-area">
+                    <div class="log-entry">
+                        <span class="log-time">[起動時]</span>
+                        <span class="log-message">アプリケーションが正常に起動しました</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- フッター -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Simple Electron App by Koukunn_</p>
+            <div class="tech-stack">
+                <span class="tech-item">Electron</span>
+                <span class="tech-item">TypeScript</span>
+                <span class="tech-item">HTML5</span>
+                <span class="tech-item">CSS3</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScriptファイルの読み込み -->
+    <script src="renderer.js"></script>
+</body>
+</html>

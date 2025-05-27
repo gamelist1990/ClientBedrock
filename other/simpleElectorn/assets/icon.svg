@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007acc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#17a2b8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- 背景円 -->
+  <circle cx="128" cy="128" r="120" fill="url(#grad1)" filter="url(#shadow)"/>
+  
+  <!-- Electronのロゴ風デザイン -->
+  <!-- 中央の核 -->
+  <circle cx="128" cy="128" r="20" fill="#ffffff"/>
+  
+  <!-- 軌道 -->
+  <ellipse cx="128" cy="128" rx="80" ry="30" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
+  <ellipse cx="128" cy="128" rx="80" ry="30" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.8" transform="rotate(60 128 128)"/>
+  <ellipse cx="128" cy="128" rx="80" ry="30" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.8" transform="rotate(120 128 128)"/>
+  
+  <!-- 電子 -->
+  <circle cx="208" cy="128" r="8" fill="#ffffff"/>
+  <circle cx="98" cy="85" r="8" fill="#ffffff"/>
+  <circle cx="98" cy="171" r="8" fill="#ffffff"/>
+  
+  <!-- テキスト -->
+  <text x="128" y="140" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="bold">E</text>
+</svg>

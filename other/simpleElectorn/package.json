@@ -1,0 +1,56 @@
+{
+  "name": "simple-electron-app",
+  "version": "1.0.0",
+  "author": "Koukunn_",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gamelist1990/PEXclient.git"
+  },
+  "main": "dist/main.js",
+  "homepage": "./",
+  "dependencies": {
+    "electron-log": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.13.10",
+    "electron": "^32.2.6",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  },
+  "bugs": {
+    "url": "https://github.com/gamelist1990/PEXclient/issues"
+  },
+  "description": "Electronの初心者向けサンプルアプリケーション - 学習とカスタマイズに最適なベーステンプレート (Creator: Koukunn_)",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.base.electron",
+    "productName": "SimpleElectronApp",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "src/renderer/**/*",
+      "node_modules/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
