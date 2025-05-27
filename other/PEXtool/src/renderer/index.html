@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEX Uninstall Tool</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/layout-sider.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header material-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <span class="material-icons header-icon">delete_sweep</span>
+                    <h1>PEX Uninstall Tool</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-icon refresh-header-btn" id="refresh-header" title="更新">
+                        <span class="material-icons">refresh</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <main class="content">
+            <div class="content-wrapper">
+                <div class="search-container">
+                    <div class="search-box">
+                        <span class="material-icons search-icon">search</span>
+                        <input type="text" id="search-input" placeholder="ツールを検索..." class="search-input">
+                        <button class="btn-icon clear-search" id="clear-search" style="display: none;">
+                            <span class="material-icons">clear</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tools-section">
+                    <div class="section-header">
+                        <h2>インストール済みツール</h2>
+                        <div class="tools-count" id="tools-count">0個のツール</div>
+                    </div>
+                    
+                    <div id="installed-tools-container">
+                        <div class="loading material-loading">
+                            <div class="loading-spinner-container">
+                                <div class="material-spinner">
+                                    <svg class="circular" viewBox="25 25 50 50">
+                                        <circle class="path" cx="50" cy="50" r="20" fill="none" stroke="#4285f4" stroke-width="2" stroke-miterlimit="10"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p>PEXツールを検索中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>        </main>
+        
+        <!-- Modal for confirmation -->
+        <div class="modal-overlay" id="modal-overlay">
+            <div class="modal material-modal">
+                <div class="modal-header">
+                    <h3>アンインストールの確認</h3>
+                </div>
+                <div class="modal-body">
+                    <p id="modal-message"></p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="modal-cancel">キャンセル</button>
+                    <button class="btn btn-danger" id="modal-confirm">アンインストール</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Success confirmation modal -->
+        <div class="modal-overlay" id="success-modal-overlay">
+            <div class="modal material-modal success-modal">
+                <div class="modal-header">
+                    <span class="material-icons success-icon">check_circle</span>
+                    <h3>アンインストール完了</h3>
+                </div>
+                <div class="modal-body">
+                    <p id="success-modal-message"></p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="success-modal-ok">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="renderer.js"></script>
+</body>
+</html>
