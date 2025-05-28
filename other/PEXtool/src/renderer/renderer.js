@@ -4,10 +4,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allTools = [];
     let filteredTools = [];
     let currentUninstallTool = null;
-    
-    // Get DOM elements
+      // Get DOM elements
     const installedToolsContainer = document.getElementById('installed-tools-container');
-    const searchInput = document.getElementById('search-input');    const clearSearchBtn = document.getElementById('clear-search');
+    const searchInput = document.getElementById('search-input');
     const toolsCount = document.getElementById('tools-count');
     const refreshHeaderBtn = document.getElementById('refresh-header');
     
@@ -27,13 +26,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Load installed tools
     await loadInstalledTools();
-    
-    // Initialize event listeners
+      // Initialize event listeners
     function initializeEventListeners() {
         // Search functionality
         searchInput.addEventListener('input', handleSearch);
-        clearSearchBtn.addEventListener('click', clearSearch);
-          // Refresh buttons
+        
+        // Refresh buttons
         refreshHeaderBtn.addEventListener('click', handleRefresh);
         
         // Modal events
@@ -170,16 +168,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         return toolCard;
     }
-    
-    // Search functionality
+      // Search functionality
     function handleSearch() {
         const query = searchInput.value.toLowerCase().trim();
         
         if (query === '') {
-            clearSearchBtn.style.display = 'none';
             filteredTools = [...allTools];
         } else {
-            clearSearchBtn.style.display = 'block';
             filteredTools = allTools.filter(tool => {
                 const name = (tool.productName || tool.name).toLowerCase();
                 const description = (tool.description || '').toLowerCase();
@@ -190,15 +185,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         renderTools();
         updateToolsCount();
-    }
-    
-    function clearSearch() {
-        searchInput.value = '';
-        clearSearchBtn.style.display = 'none';
-        filteredTools = [...allTools];
-        renderTools();
-        updateToolsCount();
-        searchInput.focus();
     }
     
     // Update tools count
