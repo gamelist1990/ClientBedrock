@@ -1,25 +1,25 @@
-; PEXtool シンプルインストーラー
+; PEXScanner シンプルインストーラー
 
-#define MyAppName "PEXtool"
+#define MyAppName "PEXScanner"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "GitMatrix"
-#define MyAppExeName "setuptool_windows.exe"
+#define MyAppPublisher "Koukunn_"
+#define MyAppExeName "pextool-scanner.exe"
 
 [Setup]
 ; アプリケーション基本情報
-AppId={{78B5EE53-9B5F-4D2F-8A3E-21F9A2D88B12}
+AppId={{A1C2D3E4-F5B6-7890-ABCD-1234567890EF}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName=C:\Program Files\{#MyAppName}\sample
+DefaultDirName=C:\Program Files\PEXtool\PEXScanner
 DefaultGroupName={#MyAppName}
 DisableDirPage=yes
 ; 管理者権限が必要（Program Filesにインストールするため）
 PrivilegesRequired=admin
 ; インストーラーの見た目と動作
 OutputDir=..\Output
-OutputBaseFilename=PEXtool_Setup
-SetupIconFile=..\..\minecraft\worldlist\icon.ico
+OutputBaseFilename=PEXScanner_Installer
+SetupIconFile=..\..\other\Tauri\src-tauri\icons\icon.ico
 ; ライセンス表示と同意
 LicenseFile=..\lib\LICENSE.txt
 ShowLanguageDialog=yes
@@ -38,7 +38,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; ソースコード
-Source: "..\..\minecraft\setuptool\setuptool_windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\other\Tauri\src-tauri\target\release\pextool-scanner.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\other\Tauri\src-tauri\target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\other\Tauri\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\other\Tauri\pex.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\lib\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 ; ___

@@ -152,23 +152,26 @@ async fn analyze_tool_directory(
                 }
             }
         }
-    }
-
-    // アンインストーラーの検出
+    }    // アンインストーラーの検出
     if let Ok(entries) = fs::read_dir(tool_path) {
         for entry in entries.flatten() {
             if let Ok(metadata) = entry.metadata() {
                 if metadata.is_file() {
                     let file_name = entry.file_name().to_string_lossy().to_lowercase();
-                    if file_name.starts_with("uninstall") && file_name.ends_with(".exe") {
+                    // Innoのアンインストーラー (unins000.exe) またはElectronのアンインストーラー (uninstall*.exe) を検出
+                    if (file_name.starts_with("unins") && file_name.ends_with(".exe")) || 
+                       (file_name.starts_with("uninstall") && file_name.ends_with(".exe")) {
                         let uninstall_path = entry.path().to_string_lossy().to_string();
                         tool_info.has_uninstaller = true;
                         tool_info.uninstaller_path = Some(uninstall_path);
 
-                        if file_name == "unins000.exe" {
+                        // unins000.exe または unins*.exe はInnoのアンインストーラー
+                        if file_name.starts_with("unins") {
                             tool_info.tool_type = "inno".to_string();
+                            println!("Inno uninstaller detected: {}", file_name);
                         } else {
                             tool_info.tool_type = "electron".to_string();
+                            println!("Electron uninstaller detected: {}", file_name);
                         }
                         break;
                     }

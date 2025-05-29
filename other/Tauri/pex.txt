@@ -1,0 +1,3 @@
+Name=PEXScanner
+Version=1.0.0
+Description=PEXtoolにインストールされているものを表示します Tauriアプリ実験版です
