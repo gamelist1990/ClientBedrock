@@ -1,17 +1,22 @@
 {
-  "productName": "check",
+  "productName": "PEXScanner",
   "version": "../package.json",
-  "identifier": "com.tauri.check",
+  "identifier": "com.tauri.pexscanner",
   "build": {
     "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:server",
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000"
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "app"],
+    "icon": ["icons/icon.ico"]
   },
   "app": {
     "windows": [
       {
-        "title": "check",
+        "title": "PEX Scanner Tool",
         "width": 800,
         "height": 600,
         "resizable": true,

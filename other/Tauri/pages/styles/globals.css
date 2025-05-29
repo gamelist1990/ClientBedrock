@@ -1,0 +1,1073 @@
+/* Google Material Design inspired PEXtool Scanner */
+:root {
+  /* Google Material Design カラーパレット */
+  --google-blue: #4285f4;
+  --google-blue-dark: #1a73e8;
+  --google-blue-light: #e8f0fe;
+  --google-red: #ea4335;
+  --google-red-light: #fce8e6;
+  --google-green: #34a853;
+  --google-green-light: #e6f4ea;
+  --google-yellow: #fbbc04;
+  --google-yellow-light: #fef7e0;
+  --google-grey-50: #f8f9fa;
+  --google-grey-100: #f1f3f4;
+  --google-grey-200: #e8eaed;
+  --google-grey-300: #dadce0;
+  --google-grey-400: #bdc1c6;
+  --google-grey-500: #9aa0a6;
+  --google-grey-600: #80868b;
+  --google-grey-700: #5f6368;
+  --google-grey-800: #3c4043;
+  --google-grey-900: #202124;
+  
+  /* プライマリカラー */
+  --primary-color: var(--google-blue);
+  --primary-dark: var(--google-blue-dark);
+  --primary-light: var(--google-blue-light);
+  
+  /* 背景色 */
+  --background-primary: #ffffff;
+  --background-secondary: var(--google-grey-50);
+  --background-card: #ffffff;
+  --background-hover: var(--google-grey-100);
+  
+  /* テキストカラー */
+  --text-primary: var(--google-grey-900);
+  --text-secondary: var(--google-grey-700);
+  --text-muted: var(--google-grey-500);
+  --text-on-primary: #ffffff;
+  
+  /* 状態カラー */
+  --success-color: var(--google-green);
+  --success-bg: var(--google-green-light);
+  --warning-color: var(--google-yellow);
+  --warning-bg: var(--google-yellow-light);
+  --error-color: var(--google-red);
+  --error-bg: var(--google-red-light);
+  
+  /* Material Design シャドウ（エレベーション） */
+  --elevation-1: 0 1px 3px 0 rgba(0, 0, 0, 0.12), 0 1px 2px 0 rgba(0, 0, 0, 0.24);
+  --elevation-2: 0 3px 6px 0 rgba(0, 0, 0, 0.16), 0 3px 6px 0 rgba(0, 0, 0, 0.23);
+  --elevation-3: 0 10px 20px 0 rgba(0, 0, 0, 0.19), 0 6px 6px 0 rgba(0, 0, 0, 0.23);
+  --elevation-4: 0 14px 28px 0 rgba(0, 0, 0, 0.25), 0 10px 10px 0 rgba(0, 0, 0, 0.22);
+  --elevation-5: 0 19px 38px 0 rgba(0, 0, 0, 0.30), 0 15px 12px 0 rgba(0, 0, 0, 0.22);
+  
+  /* 境界線とレイアウト */
+  --border-radius: 8px;
+  --border-radius-small: 4px;
+  --border-radius-large: 16px;
+  --border-color: var(--google-grey-300);
+  --divider-color: var(--google-grey-200);
+  --max-width: 1200px;
+  
+  /* アニメーション（Material Motion） */
+  --transition-fast: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-normal: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-slow: all 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
+  
+  /* フォント（Google Fonts準拠） */
+  --font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-primary: var(--google-grey-900);
+    --background-secondary: var(--google-grey-800);
+    --background-card: var(--google-grey-800);
+    --background-hover: var(--google-grey-700);
+    
+    --text-primary: #ffffff;
+    --text-secondary: var(--google-grey-300);
+    --text-muted: var(--google-grey-400);
+    
+    --border-color: var(--google-grey-600);
+    --divider-color: var(--google-grey-700);
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--background-secondary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* メインコンテナ - Google風レイアウト */
+.app-container {
+  min-height: 100vh;
+  background-color: var(--background-secondary);
+  padding: 24px;
+  position: relative;
+}
+
+.main-content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Material Design カード */
+.glass-card {
+  background-color: var(--background-card);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--elevation-1);
+  margin-bottom: 24px;
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card:hover {
+  box-shadow: var(--elevation-2);
+  transform: translateY(-1px);
+}
+
+/* ヘッダーセクション - Google風 */
+.header-section {
+  padding: 32px;
+  text-align: center;
+  background-color: var(--background-card);
+}
+
+.main-title {
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-regular);
+  margin: 0;
+}
+
+/* Material Design - Alert Cards */
+.error-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--error-color);
+  margin-bottom: 16px;
+  animation: slideInDown 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.error-card::before {
+  content: '⚠️';
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.success-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: var(--success-bg);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--success-color);
+  margin-bottom: 16px;
+  animation: slideInDown 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.success-card::before {
+  content: '✅';
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* スピナーアニメーション */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* カウントアップアニメーション */
+.counter {
+  display: inline-block;
+  animation: countUp 0.8s ease-out;
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Material Design Progress Indicator */
+.progress-container {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background-color: var(--google-grey-200);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--primary-color);
+  border-radius: 2px;
+  transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.6), 
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* コントロールパネル */
+.control-panel {
+  padding: 30px;
+}
+
+.control-row {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Material Design Buttons */
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  min-height: 40px;
+  background-color: var(--primary-color);
+  color: var(--text-on-primary);
+  border: none;
+  border-radius: var(--border-radius-small);
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--elevation-2);
+}
+
+.primary-button:hover {
+  background-color: var(--primary-dark);
+  box-shadow: var(--elevation-3);
+}
+
+.primary-button:focus {
+  outline: none;
+  box-shadow: var(--elevation-3), 0 0 0 3px rgba(66, 133, 244, 0.2);
+}
+
+.primary-button:active {
+  box-shadow: var(--elevation-1);
+  transform: translateY(1px);
+}
+
+.primary-button:disabled {
+  background-color: var(--google-grey-300);
+  color: var(--google-grey-500);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Material Ripple Effect */
+.primary-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.primary-button:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Material Design Form Elements */
+.select-input {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+  background-color: var(--background-card);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-regular);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  min-width: 200px;
+  outline: none;
+}
+
+.select-input:hover {
+  border-color: var(--google-grey-400);
+  background-color: var(--background-hover);
+}
+
+.select-input:focus {
+  border-color: var(--primary-color);
+  border-width: 2px;
+  padding: 11px 15px; /* Adjust padding to compensate for thicker border */
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.select-input:disabled {
+  background-color: var(--google-grey-100);
+  border-color: var(--google-grey-300);
+  color: var(--google-grey-500);
+  cursor: not-allowed;
+}
+
+/* Material Design Statistics Counter */
+.stats-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  background-color: var(--primary-light);
+  border-radius: 20px;
+  white-space: nowrap;
+  border: 1px solid var(--google-blue-light);
+}
+
+/* Material Design Status Section */
+.status-section {
+  padding: 24px;
+  background-color: var(--background-card);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-top: 16px;
+}
+
+.status-title {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.15px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--elevation-1);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.status-item:hover {
+  box-shadow: var(--elevation-2);
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+/* Material Design Tool Info Section */
+.tool-info-section {
+  padding: 32px;
+}
+
+.tool-title {
+  margin: 0 0 24px 0;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.15px;
+}
+
+.tool-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tool-detail-item {
+  padding: 16px;
+  background-color: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary-color);
+  box-shadow: var(--elevation-1);
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.tool-detail-item:hover {
+  box-shadow: var(--elevation-2);
+  transform: translateX(4px);
+  border-left-width: 6px;
+}
+
+/* Material Design Uninstaller Info */
+.uninstaller-info {
+  padding: 16px;
+  background-color: var(--success-bg);
+  border: 1px solid var(--success-color);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--success-color);
+  box-shadow: var(--elevation-1);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.uninstaller-info.no-uninstaller {
+  background-color: var(--error-bg);
+  border-color: var(--error-color);
+  border-left-color: var(--error-color);
+}
+
+.uninstaller-info:hover {
+  box-shadow: var(--elevation-2);
+  transform: translateX(4px);
+  border-left-width: 6px;
+}
+
+.uninstaller-path {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: var(--google-grey-100);
+  border-radius: var(--border-radius-small);
+  display: inline-block;
+  word-break: break-all;
+}
+
+/* Material Design App List Section */
+.app-list-section {
+  padding: 32px;
+  min-height: 400px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1.125rem;
+  font-weight: var(--font-weight-regular);
+  padding: 80px 24px;
+  background-color: var(--background-card);
+  border: 2px dashed var(--google-grey-300);
+  border-radius: var(--border-radius-large);
+  margin: 24px 0;
+}
+
+.empty-state::before {
+  content: '📂';
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.loading-state {
+  animation: pulse 2s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: scale(1.02);
+  }
+}
+
+/* Material Design App Items */
+.app-grid {
+  display: grid;
+  gap: 16px;
+  scroll-snap-type: y mandatory;
+}
+
+.app-item {
+  background-color: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--elevation-1);
+  transition: var(--transition-normal);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  animation: slideInUp 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  animation-fill-mode: both;
+  scroll-snap-align: start;
+}
+
+.app-item:hover {
+  box-shadow: var(--elevation-3);
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.app-item:focus {
+  outline: none;
+  box-shadow: var(--elevation-2), 0 0 0 2px var(--primary-color);
+}
+
+.app-item.pe-executable {
+  border-left: 4px solid var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.app-item.regular-file {
+  border-left: 4px solid var(--google-grey-400);
+  background-color: var(--background-card);
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.app-name {
+  color: var(--text-primary);
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+  word-break: break-word;
+  flex: 1;
+}
+
+.file-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-on-primary);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.file-type-badge.pe-type {
+  background-color: var(--primary-color);
+}
+
+.file-type-badge.regular-type {
+  background-color: var(--google-grey-500);
+}
+
+.app-path {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  margin-bottom: 16px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background-color: var(--google-grey-100);
+  padding: 8px 12px;
+  border-radius: var(--border-radius-small);
+  word-break: break-all;
+}
+
+.app-metadata {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.metadata-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: var(--font-weight-medium);
+  font-size: 0.8125rem;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-small);
+  background-color: var(--google-grey-100);
+  color: var(--text-secondary);
+  position: relative;
+  cursor: help;
+}
+
+.metadata-item.size {
+  color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.metadata-item.architecture {
+  color: var(--success-color);
+  background-color: var(--success-bg);
+}
+
+.metadata-item.subsystem {
+  color: var(--warning-color);
+  background-color: var(--warning-bg);
+}
+
+.debug-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 15px;
+  }
+  
+  .main-title {
+    font-size: 2.2rem;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+  }
+  
+  .header-section {
+    padding: 25px;
+  }
+  
+  .control-panel,
+  .tool-info-section,
+  .app-list-section {
+    padding: 20px;
+  }
+  
+  .control-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .select-input {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .app-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .app-name {
+    margin-right: 0;
+  }
+  
+  .app-metadata {
+    gap: 15px;
+  }
+  
+  .tool-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Material Design Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--google-grey-100);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--google-grey-400);
+  border-radius: 6px;
+  border: 2px solid var(--google-grey-100);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--google-grey-500);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--google-grey-600);
+}
+
+/* Material Design Focus States */
+.primary-button:focus,
+.select-input:focus,
+.app-item:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-color);
+}
+
+/* アクセシビリティ改善 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 高コントラストモード対応 */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-color: #000000;
+  }
+  
+  .glass-card {
+    background: #ffffff;
+    border: 2px solid #000000;
+  }
+}
+
+/* スムーズなスクロール */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 選択不可のテキスト */
+.main-title,
+.subtitle,
+.empty-state {
+  user-select: none;
+}
+
+/* パフォーマンス最適化 */
+.app-item,
+.glass-card,
+.primary-button {
+  will-change: transform;
+}
+
+/* 追加の UX 改善とアニメーション */
+.glass-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.4), 
+    transparent
+  );
+  transition: left 0.6s;
+  pointer-events: none;
+}
+
+.glass-card:hover::after {
+  left: 100%;
+}
+
+/* 改善されたボタンアニメーション */
+.primary-button {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.primary-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ロード状態のアニメーション */
+.loading-state {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: scale(1.02);
+  }
+}
+
+/* カードのスタッガードアニメーション */
+.app-item {
+  animation: slideInUp 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.app-item:nth-child(1) { animation-delay: 0.1s; }
+.app-item:nth-child(2) { animation-delay: 0.2s; }
+.app-item:nth-child(3) { animation-delay: 0.3s; }
+.app-item:nth-child(4) { animation-delay: 0.4s; }
+.app-item:nth-child(5) { animation-delay: 0.5s; }
+.app-item:nth-child(n+6) { animation-delay: 0.6s; }
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ファイルタイプバッジの改善 */
+.file-type-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-type-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.app-item:hover .file-type-badge::before {
+  left: 100%;
+}
+
+/* ステータスアイテムのホバー効果 */
+.status-item {
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.status-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+}
+
+/* ツール詳細アイテムの改善 */
+.tool-detail-item {
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.tool-detail-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left-width: 6px;
+}
+
+/* スクロールスナップの追加 */
+.app-grid {
+  scroll-snap-type: y mandatory;
+}
+
+.app-item {
+  scroll-snap-align: start;
+}
+
+
+
+/* ツールチップ風の効果 */
+.metadata-item:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  animation: tooltipFadeIn 0.3s ease-out forwards;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Enhanced Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .uninstaller-path {
+    background-color: var(--google-grey-700);
+  }
+  
+  .app-path {
+    background-color: var(--google-grey-700);
+  }
+  
+  .metadata-item {
+    background-color: var(--google-grey-700);
+  }
+}
+
+/* Material Design Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--divider-color);
+  background-color: var(--background-card);
+  padding: 0 16px;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.tab-button {
+  padding: 16px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+
+.tab-button.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tab-button:hover:not(.active) {
+  color: var(--text-primary);
+  background-color: var(--background-hover);
+}
+
+.tab-button:focus {
+  outline: none;
+  background-color: var(--background-hover);
+}

@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Tauriアプリケーション用の設定
+  // 静的エクスポートを常に有効にする
   output: 'export',
   trailingSlash: true,
+  distDir: 'out',
+  assetPrefix: './',
   images: {
     unoptimized: true
   },
-  assetPrefix: './',
   // 開発モード用の設定
   webpack: (config, { dev, isServer }) => {
     // Tauriの開発環境に対応するため、ホットリロードを有効にする

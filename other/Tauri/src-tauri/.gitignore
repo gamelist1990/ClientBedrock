@@ -10,3 +10,5 @@
 src-tauri/target/
 
 .next
+
+src-tauri/icons/
