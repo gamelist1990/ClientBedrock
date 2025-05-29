@@ -16,6 +16,10 @@ DefaultGroupName={#MyAppName}
 DisableDirPage=yes
 ; 管理者権限が必要（Program Filesにインストールするため）
 PrivilegesRequired=admin
+; アップグレード処理用の設定
+AppVerName={#MyAppName} {#MyAppVersion}
+UpdateUninstallLogAppName=yes
+AppMutex=PEXScannerAppMutex
 ; インストーラーの見た目と動作
 OutputDir=..\Output
 OutputBaseFilename=PEXScanner_Installer
@@ -23,8 +27,13 @@ SetupIconFile=..\..\other\Tauri\src-tauri\icons\icon.ico
 ; ライセンス表示と同意
 LicenseFile=..\lib\LICENSE.txt
 ShowLanguageDialog=yes
-Compression=lzma
+Compression=lzma2/ultra64
 SolidCompression=yes
+InternalCompressLevel=ultra64
+CompressionThreads=auto
+LZMAUseSeparateProcess=yes
+LZMADictionarySize=1048576
+LZMANumFastBytes=273
 WizardStyle=modern
 ; 日本語サポート
 LanguageDetectionMethod=uilanguage
@@ -33,16 +42,30 @@ LanguageDetectionMethod=uilanguage
 Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Messages]
+japanese.SetupAppTitle=セットアップ - {#MyAppName}
+japanese.SetupWindowTitle={#MyAppName} - セットアップ
+japanese.UpgradeAppTitle=更新 - {#MyAppName}
+japanese.WizardReady=インストールの準備ができました
+japanese.WizardReadyTitle=インストールの準備ができました
+japanese.WizardReadyLabel=インストーラーは {#MyAppName} の[name]を行う準備ができました。
+english.SetupAppTitle=Setup - {#MyAppName}
+english.SetupWindowTitle={#MyAppName} - Setup
+english.UpgradeAppTitle=Update - {#MyAppName}
+english.WizardReady=Ready to Install
+english.WizardReadyTitle=Ready to Install
+english.WizardReadyLabel=Setup is now ready to begin [name] {#MyAppName}.
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 ; ソースコード
-Source: "..\..\other\Tauri\src-tauri\target\release\pextool-scanner.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\other\Tauri\src-tauri\target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\other\Tauri\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\other\Tauri\pex.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\lib\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\other\Tauri\src-tauri\target\release\pextool-scanner.exe"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
+Source: "..\..\other\Tauri\src-tauri\target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
+Source: "..\..\other\Tauri\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
+Source: "..\..\other\Tauri\pex.txt"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
+Source: "..\lib\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
 
 ; ___
 

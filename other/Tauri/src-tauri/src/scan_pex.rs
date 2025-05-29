@@ -152,27 +152,49 @@ async fn analyze_tool_directory(
                 }
             }
         }
-    }    // アンインストーラーの検出
+    } // アンインストーラーの検出
     if let Ok(entries) = fs::read_dir(tool_path) {
         for entry in entries.flatten() {
             if let Ok(metadata) = entry.metadata() {
                 if metadata.is_file() {
-                    let file_name = entry.file_name().to_string_lossy().to_lowercase();
-                    // Innoのアンインストーラー (unins000.exe) またはElectronのアンインストーラー (uninstall*.exe) を検出
-                    if (file_name.starts_with("unins") && file_name.ends_with(".exe")) || 
-                       (file_name.starts_with("uninstall") && file_name.ends_with(".exe")) {
+                    // 大文字小文字を区別せずに検出するために小文字変換
+                    let file_name_lower = entry.file_name().to_string_lossy().to_lowercase();
+                    let file_name_original = entry.file_name().to_string_lossy().to_string();
+
+                    // デバッグ: すべてのexeファイルを出力
+                    if file_name_lower.ends_with(".exe") {
+                        println!("EXEファイル検出: {}", file_name_original);
+                    } // "Uninstall" (大文字小文字問わず) で始まるか、"unins" で始まるアンインストーラーを検出
+                      // 先に「uninstall」をチェックし、後で「unins」をチェックする
+                    if (file_name_lower.starts_with("uninstall")
+                        && file_name_lower.ends_with(".exe"))
+                        || (file_name_lower.starts_with("unins")
+                            && !file_name_lower.starts_with("uninstall")
+                            && file_name_lower.ends_with(".exe"))
+                    {
                         let uninstall_path = entry.path().to_string_lossy().to_string();
                         tool_info.has_uninstaller = true;
                         tool_info.uninstaller_path = Some(uninstall_path);
+                        println!("アンインストーラー検出: {}", file_name_original);
 
-                        // unins000.exe または unins*.exe はInnoのアンインストーラー
-                        if file_name.starts_with("unins") {
-                            tool_info.tool_type = "inno".to_string();
-                            println!("Inno uninstaller detected: {}", file_name);
-                        } else {
+                        // 「uninstall」で始まるファイルはElectronアンインストーラー
+                        if file_name_lower.starts_with("uninstall") {
                             tool_info.tool_type = "electron".to_string();
-                            println!("Electron uninstaller detected: {}", file_name);
+                            println!("Electronアンインストーラー: {}", file_name_original);
                         }
+                        // 「unins」で始まり「uninstall」で始まらないファイルはInnoアンインストーラー
+                        else if file_name_lower.starts_with("unins") {
+                            tool_info.tool_type = "inno".to_string();
+                            println!("Innoアンインストーラー: {}", file_name_original);
+                        }
+
+                        // package.jsonが存在する場合は、Electronタイプを優先
+                        let package_json_path = Path::new(tool_path).join("package.json");
+                        if package_json_path.exists() {
+                            tool_info.tool_type = "electron".to_string();
+                            println!("Package.json found, setting type to electron");
+                        }
+
                         break;
                     }
                 }
@@ -230,57 +252,85 @@ async fn scan_directory_for_apps(
 }
 
 /// PEファイルの基本情報を抽出（簡易版）
-fn analyze_pe_file(file_path: &Path, metadata: &fs::Metadata) -> Option<PeInfo> {    if let Some(extension) = file_path.extension() {
+fn analyze_pe_file(file_path: &Path, metadata: &fs::Metadata) -> Option<PeInfo> {
+    if let Some(extension) = file_path.extension() {
         let ext = extension.to_string_lossy().to_lowercase();
-        if matches!(ext.as_str(), "exe" | "dll" | "sys" | "ocx") {            let timestamp = metadata
+        if matches!(ext.as_str(), "exe" | "dll" | "sys" | "ocx") {
+            let timestamp = metadata
                 .modified()
                 .unwrap_or(SystemTime::UNIX_EPOCH)
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            
+
             // 手動で日時を計算
             let seconds_per_day = 86400;
             let seconds_per_hour = 3600;
             let seconds_per_minute = 60;
-            
+
             // UNIXタイムスタンプを日付に変換（簡易実装）
             let days_since_epoch = timestamp / seconds_per_day;
             let seconds_in_day = timestamp % seconds_per_day;
-            
+
             let hours = seconds_in_day / seconds_per_hour;
             let minutes = (seconds_in_day % seconds_per_hour) / seconds_per_minute;
             let seconds = (seconds_in_day % seconds_per_hour) % seconds_per_minute;
-            
+
             // 1970年1月1日からの日数から日付を算出（閏年など厳密な計算はしていない簡易版）
             let mut year = 1970;
             let mut days_remaining = days_since_epoch;
-            
+
             // 年を計算
             loop {
-                let days_in_year = if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) { 366 } else { 365 };
+                let days_in_year = if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) {
+                    366
+                } else {
+                    365
+                };
                 if days_remaining < days_in_year {
                     break;
                 }
                 days_remaining -= days_in_year;
                 year += 1;
             }
-            
+
             // 月を計算
-            let days_in_month = [31, 
-                if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) { 29 } else { 28 }, 
-                31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            let days_in_month = [
+                31,
+                if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) {
+                    29
+                } else {
+                    28
+                },
+                31,
+                30,
+                31,
+                30,
+                31,
+                31,
+                30,
+                31,
+                30,
+                31,
+            ];
             let mut month = 0;
             while month < 12 && days_remaining >= days_in_month[month] {
                 days_remaining -= days_in_month[month];
                 month += 1;
             }
-            
+
             // 日を計算（0始まりから1始まりに）
             let day = days_remaining + 1;
-            
-            let timestamp_str = format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", 
-                year, month + 1, day, hours, minutes, seconds);
+
+            let timestamp_str = format!(
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+                year,
+                month + 1,
+                day,
+                hours,
+                minutes,
+                seconds
+            );
 
             return Some(PeInfo {
                 architecture: "x64".to_string(), // 簡易判定
@@ -314,46 +364,70 @@ async fn extract_info_from_exe_files(
                         // ファイル名からタイプを推測
                         if file_name.contains("electron") || file_name.contains("app") {
                             tool_info.tool_type = "electron".to_string();
-                        }                        // メインexeファイルと思われるものからバージョンを取得（簡易版）
+                        } // メインexeファイルと思われるものからバージョンを取得（簡易版）
                         if tool_info.version == "Unknown" && metadata.len() > 1024 {
                             if let Ok(modified) = metadata.modified() {
-                                if let Ok(duration) = modified.duration_since(SystemTime::UNIX_EPOCH) {
+                                if let Ok(duration) =
+                                    modified.duration_since(SystemTime::UNIX_EPOCH)
+                                {
                                     let timestamp = duration.as_secs();
-                                    
+
                                     // 手動で日時を計算
                                     let seconds_per_day = 86400;
-                                    
+
                                     // UNIXタイムスタンプを日付に変換（簡易実装）
                                     let days_since_epoch = timestamp / seconds_per_day;
-                                    
+
                                     // 1970年1月1日からの日数から日付を算出
                                     let mut year = 1970;
                                     let mut days_remaining = days_since_epoch;
-                                    
+
                                     // 年を計算
                                     loop {
-                                        let days_in_year = if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) { 366 } else { 365 };
+                                        let days_in_year = if (year % 4 == 0 && year % 100 != 0)
+                                            || (year % 400 == 0)
+                                        {
+                                            366
+                                        } else {
+                                            365
+                                        };
                                         if days_remaining < days_in_year {
                                             break;
                                         }
                                         days_remaining -= days_in_year;
                                         year += 1;
                                     }
-                                    
+
                                     // 月を計算
-                                    let days_in_month = [31, 
-                                        if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) { 29 } else { 28 }, 
-                                        31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                                    let days_in_month = [
+                                        31,
+                                        if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) {
+                                            29
+                                        } else {
+                                            28
+                                        },
+                                        31,
+                                        30,
+                                        31,
+                                        30,
+                                        31,
+                                        31,
+                                        30,
+                                        31,
+                                        30,
+                                        31,
+                                    ];
                                     let mut month = 0;
                                     while month < 12 && days_remaining >= days_in_month[month] {
                                         days_remaining -= days_in_month[month];
                                         month += 1;
                                     }
-                                    
+
                                     // 日を計算（0始まりから1始まりに）
                                     let day = days_remaining + 1;
-                                    
-                                    tool_info.version = format!("{}.{:02}.{:02}", year, month + 1, day);
+
+                                    tool_info.version =
+                                        format!("{}.{:02}.{:02}", year, month + 1, day);
                                 }
                             }
                         }
