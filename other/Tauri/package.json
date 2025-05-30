@@ -11,7 +11,9 @@
     "export": "next build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "build:optimized": "npm run build && tauri build --release",
+    "build:ultra": "build-optimized.bat"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

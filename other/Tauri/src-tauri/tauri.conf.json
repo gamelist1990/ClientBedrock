@@ -7,24 +7,26 @@
     "beforeDevCommand": "npm run dev:server",
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000"
-  },
-  "bundle": {
+  },  "bundle": {
     "active": true,
-    "targets": ["nsis", "app"],
-    "icon": ["icons/icon.ico"]
-  },
-  "app": {
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "resources": [],
+    "externalBin": []
+  },  "app": {
     "windows": [
       {
         "title": "PEX Scanner Tool",
         "width": 1280,
         "height": 720,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": false
   }
 }

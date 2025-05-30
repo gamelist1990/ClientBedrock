@@ -29,11 +29,6 @@ LicenseFile=..\lib\LICENSE.txt
 ShowLanguageDialog=yes
 Compression=lzma2/ultra64
 SolidCompression=yes
-InternalCompressLevel=ultra64
-CompressionThreads=auto
-LZMAUseSeparateProcess=yes
-LZMADictionarySize=1048576
-LZMANumFastBytes=273
 WizardStyle=modern
 ; 日本語サポート
 LanguageDetectionMethod=uilanguage
