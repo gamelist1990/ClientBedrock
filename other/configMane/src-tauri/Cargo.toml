@@ -1,0 +1,39 @@
+[package]
+name = "pextool-scanner"
+version = "1.0.0"
+description = "PEXtoolにインストールされているものを表示します Tauriアプリ実験版"
+authors = ["Koukunn_"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [], default-features = true }
+tauri-plugin-opener = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "rt"], default-features = false }
+chrono = { version = "0.4", features = ["serde"], default-features = false }
+zip = "0.6"
+reqwest = { version = "0.11", features = ["stream"] }
+image = { version = "0.24", features = ["png", "jpeg"] }
+base64 = "0.21"
+
+
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+
+[profile.release]
+opt-level = "z"          # サイズ最適化
+lto = "fat"              # 積極的なLink Time Optimization
+codegen-units = 1        # コード生成単位を1に（最適化優先）
+panic = "abort"          # パニック時の処理を軽量化
+strip = "symbols"        # シンボル情報を削除
+debug = false            # デバッグ情報を完全に無効化
+incremental = false      # インクリメンタルコンパイルを無効化（サイズ優先）
+overflow-checks = false  # オーバーフローチェックを無効化（パフォーマンス優先）

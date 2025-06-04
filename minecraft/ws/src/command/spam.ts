@@ -19,7 +19,7 @@ system.server?.on(
                 world.runCommand(
                     `me ${ozeu}`
                 );
-            }
+            }   
         }
     }
 );
