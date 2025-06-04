@@ -1,5 +1,5 @@
 {
-  "productName": "PEXScanner",
+  "productName": "config Manager for PEX",
   "version": "../package.json",
   "identifier": "com.tauri.pexscanner",
   "build": {
@@ -7,16 +7,18 @@
     "beforeDevCommand": "npm run dev:server",
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000"
-  },  "bundle": {
+  },
+  "bundle": {
     "active": true,
     "targets": ["nsis"],
     "icon": ["icons/icon.ico"],
     "resources": [],
     "externalBin": []
-  },  "app": {
+  },
+  "app": {
     "windows": [
       {
-        "title": "PEX Scanner Tool",
+        "title": "PEX Config Manager",
         "width": 1280,
         "height": 720,
         "resizable": true,
@@ -28,5 +30,6 @@
       "csp": null
     },
     "macOSPrivateApi": false
-  }
+  },
+  "plugins": {}
 }

@@ -8,7 +8,7 @@ fn main() {
     tauri::Builder::<tauri::Wry>::default()
         .plugin(tauri_plugin_opener::init::<tauri::Wry>())
         .plugin(tauri_plugin_fs::init::<tauri::Wry>())
-        .invoke_handler(tauri::generate_handler![
+        .plugin(tauri_plugin_dialog::init::<tauri::Wry>())        .invoke_handler(tauri::generate_handler![
             scan_pex::scan_pextool_command,
             config::scan_minecraft_configs,
             config::backup_mod_config,
@@ -17,6 +17,10 @@ fn main() {
             config::share_config_backup,
             config::preview_external_backup,
             config::import_external_backup,
+            config::select_external_pack_file,
+            config::smart_import_pack,
+            config::select_export_location,
+            config::export_config_to_custom_location,
             config::update_mod_icon,
             config::batch_update_mod_icons,
             config::save_mod_icon,

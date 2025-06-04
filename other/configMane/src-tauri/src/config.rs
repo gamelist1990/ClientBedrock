@@ -80,6 +80,13 @@ pub struct PreviewResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileSelectResult {
+    pub success: bool,
+    pub file_path: Option<String>,
+    pub error: Option<String>,
+}
+
 // MODアイコンの結果構造体
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IconUpdateResult {
@@ -131,12 +138,16 @@ fn get_mod_config_paths() -> HashMap<String, (String, Option<String>)> {
     
     // 対応mod（パス, デフォルトアイコンURL）
     mod_paths.insert(
-        "Flarial".to_string(), 
-        ("Flarial\\Config".to_string(), Some("https://github.com/flarialmc/newlauncher/raw/main/src-tauri/icons/icon.png".to_string()))
+        "Flarial".to_string(),
+        ("Flarial\\Config".to_string(), Some("https://github.com/flarialmc/launcher/blob/main/src/Assets/icon.png?raw=true".to_string()))
     );
     mod_paths.insert(
         "OderSo".to_string(), 
-        ("OderSo\\Configs".to_string(), Some("https://avatars.githubusercontent.com/u/167635071?s=200&v=4".to_string()))
+        ("OderSo\\Configs".to_string(), Some("https://www.pixelalchemy.uk/wp-content/uploads/2024/09/Screenshot-2024-09-17-at-1.45.16%E2%80%AFpm.png".to_string()))
+    );
+    mod_paths.insert(
+        "LatiteRecode".to_string(),
+        ("LatiteRecode\\Configs".to_string(), Some("https://latite.net/sources/latite.webp".to_string()))
     );
     // 他のMODも追加可能
     
@@ -186,9 +197,17 @@ pub async fn scan_minecraft_configs() -> ConfigScanResult {
             // 保存されたアイコン設定があれば適用、なければデフォルト設定を使用
             let (icon_data, icon_url) = if let Some(icon_config) = icon_settings.mod_icons.get(mod_name) {
                 (icon_config.icon_data.clone(), icon_config.icon_url.clone())
+            } else if let Some(default_url) = default_icon_url {
+                // デフォルトアイコンURLがある場合は即時取得
+                match fetch_and_resize_image(default_url, 32).await {
+                    Ok(data) => (Some(data), Some(default_url.clone())),
+                    Err(e) => {
+                        eprintln!("デフォルトアイコン取得失敗: {}", e);
+                        (None, Some(default_url.clone()))
+                    }
+                }
             } else {
-                // デフォルトアイコンURLがある場合はそれを使用
-                (None, default_icon_url.clone())
+                (None, None)
             };
 
             mods.push(ModConfig {
@@ -542,9 +561,31 @@ pub async fn list_backup_files() -> Vec<BackupFileInfo> {
                 }
             }
         }
-    }
+    }    backups
+}
 
-    backups
+// 安全なファイルコピー（プロセス競合エラー対策）
+async fn copy_file_safely(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // 複数回のリトライでファイルコピーを試行
+    let mut attempts = 0;
+    const MAX_ATTEMPTS: u32 = 5;
+    const RETRY_DELAY_MS: u64 = 100;
+    
+    while attempts < MAX_ATTEMPTS {
+        match tokio::fs::copy(source, target).await {
+            Ok(_) => return Ok(()),
+            Err(e) => {
+                attempts += 1;
+                if attempts >= MAX_ATTEMPTS {
+                    return Err(Box::new(e));
+                }
+                // 短時間待機してリトライ
+                tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+            }
+        }
+    }
+    
+    Err("ファイルコピーの最大リトライ回数に達しました".into())
 }
 
 // 共有機能: バックアップファイルを任意の場所にコピー
@@ -566,9 +607,8 @@ pub async fn share_config_backup(backup_filename: String, target_path: String) -
             error: Some("バックアップファイルが見つかりません".to_string()),
         };
     }
-    
-    // ファイルをコピー
-    match fs::copy(&source_path, &target_path) {
+      // ファイルをコピー（プロセス競合エラー対策）
+    match copy_file_safely(&source_path, &target_path).await {
         Ok(_) => {
             // 共有フラグを更新
             let _ = update_backup_shared_flag(&backup_filename, true).await;
@@ -778,9 +818,11 @@ pub async fn import_external_backup(
             let mut contents = String::new();
             if file.read_to_string(&mut contents).is_ok() {
                 backup_info = serde_json::from_str(&contents).ok();
+            }        } else if file_name.starts_with("config/") && !file_name.ends_with('/') {
+            // ファイル表示数を制限（最大5個まで）
+            if preview_files.len() < 5 {
+                preview_files.push(file_name);
             }
-        } else if file_name.starts_with("config/") && !file_name.ends_with('/') {
-            preview_files.push(file_name);
         }
     }
     
@@ -812,15 +854,90 @@ pub async fn import_external_backup(
                 backup_info.mod_name,
                 target_mod_name
             )),
+        };    }
+    
+    // 実際のファイルインポート処理
+    let mut imported_files = Vec::new();
+    let target_config_dir = format!("{}/config", MINECRAFT_CONFIG_BASE);
+    
+    // ターゲットディレクトリが存在しない場合は作成
+    if let Err(e) = fs::create_dir_all(&target_config_dir) {
+        return ExternalImportResult {
+            success: false,
+            imported_configs: vec![],
+            mod_name_mismatch: Some(mod_name_mismatch),
+            original_mod_name: Some(backup_info.mod_name),
+            target_mod_name: Some(target_mod_name.clone()),
+            preview_files,
+            error: Some(format!("ターゲットディレクトリの作成に失敗しました: {}", e)),
         };
     }
     
-    // インポート処理（実際のファイル展開はここで実装可能）
-    // 今回はプレビューのみ実装
+    // ZIPファイルを再度開いて実際のファイルを展開
+    let file = match fs::File::open(&backup_path) {
+        Ok(f) => f,
+        Err(e) => return ExternalImportResult {
+            success: false,
+            imported_configs: vec![],
+            mod_name_mismatch: Some(mod_name_mismatch),
+            original_mod_name: Some(backup_info.mod_name),
+            target_mod_name: Some(target_mod_name.clone()),
+            preview_files,
+            error: Some(format!("ファイル再読み込みエラー: {}", e)),
+        },
+    };
+    
+    let mut archive = match zip::ZipArchive::new(file) {
+        Ok(a) => a,
+        Err(e) => return ExternalImportResult {
+            success: false,
+            imported_configs: vec![],
+            mod_name_mismatch: Some(mod_name_mismatch),
+            original_mod_name: Some(backup_info.mod_name),
+            target_mod_name: Some(target_mod_name.clone()),
+            preview_files,
+            error: Some(format!("ZIP再展開エラー: {}", e)),
+        },
+    };
+    
+    // config/ディレクトリ内のファイルを実際に展開
+    for i in 0..archive.len() {
+        let mut file = match archive.by_index(i) {
+            Ok(f) => f,
+            Err(_) => continue,
+        };
+        
+        let file_name = file.name().to_string();
+        
+        if file_name.starts_with("config/") && !file_name.ends_with('/') {
+            let target_file_path = Path::new(&target_config_dir)
+                .join(file_name.strip_prefix("config/").unwrap_or(&file_name));
+            
+            // ディレクトリが存在しない場合は作成
+            if let Some(parent) = target_file_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+              // ファイルを展開（安全なコピー関数を使用）
+            match fs::File::create(&target_file_path) {
+                Ok(mut target_file) => {
+                    // 一時的にメモリにデータを読み込み
+                    let mut buffer = Vec::new();
+                    if file.read_to_end(&mut buffer).is_ok() {
+                        if target_file.write_all(&buffer).is_ok() {
+                            // ファイルを閉じてから安全なコピーを実行
+                            drop(target_file);
+                            imported_files.push(file_name);
+                        }
+                    }
+                },
+                Err(_) => continue,
+            }
+        }
+    }
     
     ExternalImportResult {
         success: true,
-        imported_configs: preview_files.clone(),
+        imported_configs: imported_files,
         mod_name_mismatch: Some(mod_name_mismatch),
         original_mod_name: Some(backup_info.mod_name),
         target_mod_name: Some(target_mod_name),
@@ -1015,9 +1132,323 @@ pub async fn get_mod_icon(mod_name: String) -> ModIconConfig {
         })
 }
 
+// 外部パックファイル選択ダイアログを開く
+#[command]
+pub async fn select_external_pack_file(app_handle: tauri::AppHandle) -> FileSelectResult {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let result = app_handle
+        .dialog()
+        .file()
+        .add_filter("PEX Pack Files", &["pexPack"])
+        .set_title("外部パックファイルを選択")
+        .blocking_pick_file();
+    
+    #[allow(non_snake_case)]
+    match result {
+        Some(file_path) => FileSelectResult {
+            success: true,
+            file_path: Some(file_path.to_string()),
+            error: None,
+        },
+        None => FileSelectResult {
+            success: false,
+            file_path: None,
+            error: Some("ファイルが選択されませんでした".to_string()),
+        },
+    }
+}
+
 // 全MODアイコン設定を取得
 #[command]
 pub async fn get_all_mod_icons() -> HashMap<String, ModIconConfig> {
     let settings = load_icon_settings();
     settings.mod_icons
+}
+
+// 新しい構造体を追加
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SmartImportResult {
+    pub success: bool,
+    pub detected_mod_type: Option<String>,
+    pub imported_configs: Vec<String>,
+    pub target_mod_path: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExportSelectResult {
+    pub success: bool,
+    pub selected_path: Option<String>,
+    pub error: Option<String>,
+}
+
+// pexPack出力場所を選択するファイル選択ダイアログ
+#[command]
+#[allow(clippy::match_single_binding)]
+pub async fn select_export_location(app_handle: tauri::AppHandle, default_filename: String) -> ExportSelectResult {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let result = app_handle
+        .dialog()
+        .file()
+        .add_filter("PEX Pack Files", &["pexPack"])
+        .set_title("pexPackファイルの保存場所を選択")
+        .set_file_name(&default_filename)
+        .blocking_save_file();
+      #[allow(clippy::match_single_binding)]
+    match result {
+        Some(file_path) => ExportSelectResult {
+            success: true,
+            selected_path: Some(file_path.to_string()),
+            error: None,
+        },
+        _ => ExportSelectResult {
+            success: false,
+            selected_path: None,
+            error: Some("保存場所が選択されませんでした".to_string()),
+        },
+    }
+}
+
+// 改良されたシェア機能：ユーザー指定の場所にエクスポート
+#[command]
+pub async fn export_config_to_custom_location(
+    mod_name: String,
+    backup_name: String,
+    version: String,
+    author: Option<String>,
+    description: Option<String>,
+    export_path: String
+) -> BackupResult {
+    let config_path = format!("{}/{}", get_minecraft_config_base(), mod_name);
+    let config_path = Path::new(&config_path);
+    
+    if !config_path.exists() {
+        return BackupResult {
+            success: false,
+            backup_path: None,
+            error: Some("設定ディレクトリが見つかりません".to_string()),
+        };
+    }
+    
+    // バックアップ情報を作成
+    let backup_info = BackupInfo {
+        name: backup_name.clone(),
+        version,
+        mod_name: mod_name.clone(),
+        author,
+        description,
+        created_at: Some(std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .to_string()),
+        shared: Some(true),
+    };
+    
+    let export_path = Path::new(&export_path);
+    
+    // ZIPファイルを作成
+    match create_zip_backup(&config_path, &export_path, &backup_info) {
+        Ok(_) => BackupResult {
+            success: true,
+            backup_path: Some(export_path.to_string_lossy().to_string()),
+            error: None,
+        },
+        Err(e) => BackupResult {
+            success: false,
+            backup_path: None,
+            error: Some(format!("エクスポートに失敗しました: {}", e)),
+        },
+    }
+}
+
+// pexPackからMODタイプを自動検知する関数
+fn detect_mod_type_from_pack(archive: &mut zip::ZipArchive<fs::File>) -> Option<String> {
+    // checkType.jsonから情報を取得
+    for i in 0..archive.len() {
+        if let Ok(mut file) = archive.by_index(i) {
+            if file.name() == "checkType.json" {
+                let mut contents = String::new();
+                if file.read_to_string(&mut contents).is_ok() {
+                    if let Ok(backup_info) = serde_json::from_str::<BackupInfo>(&contents) {
+                        return Some(backup_info.mod_name);
+                    }
+                }
+                break;
+            }
+        }
+    }
+    
+    // config内のファイル拡張子で推定
+    let mut flarial_files = 0;
+    let mut other_files = 0;
+    
+    for i in 0..archive.len() {
+        if let Ok(file) = archive.by_index(i) {
+            let file_name = file.name();
+            if file_name.starts_with("config/") && !file_name.ends_with('/') {
+                if file_name.ends_with(".flarial") {
+                    flarial_files += 1;
+                } else if file_name.ends_with(".json") || file_name.ends_with(".cfg") {
+                    other_files += 1;
+                }
+            }
+        }
+    }
+    
+    // Flarialファイルが多い場合はFlarial、そうでなければOderSo
+    if flarial_files > 0 {
+        Some("Flarial".to_string())
+    } else if other_files > 0 {
+        Some("OderSo".to_string())
+    } else {
+        None
+    }
+}
+
+// スマートインポート機能：パックタイプを自動検知してMODにインポート
+#[command]
+pub async fn smart_import_pack(file_path: String) -> SmartImportResult {
+    let backup_path = Path::new(&file_path);
+    
+    if !backup_path.exists() {
+        return SmartImportResult {
+            success: false,
+            detected_mod_type: None,
+            imported_configs: vec![],
+            target_mod_path: None,
+            error: Some("ファイルが見つかりません".to_string()),
+        };
+    }
+    
+    // ZIPファイルを読み込み
+    let file = match fs::File::open(&backup_path) {
+        Ok(f) => f,
+        Err(e) => return SmartImportResult {
+            success: false,
+            detected_mod_type: None,
+            imported_configs: vec![],
+            target_mod_path: None,
+            error: Some(format!("ファイル読み込みエラー: {}", e)),
+        },
+    };
+    
+    let mut archive = match zip::ZipArchive::new(file) {
+        Ok(a) => a,
+        Err(e) => return SmartImportResult {
+            success: false,
+            detected_mod_type: None,
+            imported_configs: vec![],
+            target_mod_path: None,
+            error: Some(format!("ZIPファイル展開エラー: {}", e)),
+        },
+    };
+    
+    // MODタイプを自動検知
+    let detected_mod_type = detect_mod_type_from_pack(&mut archive);
+    
+    if detected_mod_type.is_none() {
+        return SmartImportResult {
+            success: false,
+            detected_mod_type: None,
+            imported_configs: vec![],
+            target_mod_path: None,
+            error: Some("MODタイプを検知できませんでした".to_string()),
+        };
+    }
+    
+    let mod_type = detected_mod_type.unwrap();
+    let mod_paths = get_mod_config_paths();
+      // 対応するMODパスを取得
+    let target_mod_path = if let Some((config_sub_path, _)) = mod_paths.get(&mod_type) {
+        let base_path = get_minecraft_config_base();
+        format!("{}/{}", base_path, config_sub_path)
+    } else {
+        return SmartImportResult {
+            success: false,
+            detected_mod_type: Some(mod_type.clone()),
+            imported_configs: vec![],
+            target_mod_path: None,
+            error: Some(format!("未対応のMODタイプです: {}", mod_type)),
+        };
+    };
+    
+    // ターゲットディレクトリが存在しない場合は作成
+    if let Err(e) = fs::create_dir_all(&target_mod_path) {
+        return SmartImportResult {
+            success: false,
+            detected_mod_type: Some(mod_type.clone()),
+            imported_configs: vec![],
+            target_mod_path: Some(target_mod_path),
+            error: Some(format!("ターゲットディレクトリの作成に失敗しました: {}", e)),
+        };
+    }
+    
+    // ZIPファイルを再度開いて実際のファイルを展開
+    let file = match fs::File::open(&backup_path) {
+        Ok(f) => f,
+        Err(e) => return SmartImportResult {
+            success: false,
+            detected_mod_type: Some(mod_type.clone()),
+            imported_configs: vec![],
+            target_mod_path: Some(target_mod_path),
+            error: Some(format!("ファイル再読み込みエラー: {}", e)),
+        },
+    };
+    
+    let mut archive = match zip::ZipArchive::new(file) {
+        Ok(a) => a,
+        Err(e) => return SmartImportResult {
+            success: false,
+            detected_mod_type: Some(mod_type.clone()),
+            imported_configs: vec![],
+            target_mod_path: Some(target_mod_path),
+            error: Some(format!("ZIP再展開エラー: {}", e)),
+        },
+    };
+    
+    // config/ディレクトリ内のファイルを実際に展開
+    let mut imported_files = Vec::new();
+    
+    for i in 0..archive.len() {
+        let mut file = match archive.by_index(i) {
+            Ok(f) => f,
+            Err(_) => continue,
+        };
+        
+        let file_name = file.name().to_string();
+        
+        if file_name.starts_with("config/") && !file_name.ends_with('/') {
+            let target_file_path = Path::new(&target_mod_path)
+                .join(file_name.strip_prefix("config/").unwrap_or(&file_name));
+            
+            // ディレクトリが存在しない場合は作成
+            if let Some(parent) = target_file_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            
+            // ファイルを展開
+            match fs::File::create(&target_file_path) {
+                Ok(mut target_file) => {
+                    let mut buffer = Vec::new();
+                    if file.read_to_end(&mut buffer).is_ok() {
+                        if target_file.write_all(&buffer).is_ok() {
+                            imported_files.push(file_name);
+                        }
+                    }
+                },
+                Err(_) => continue,
+            }
+        }
+    }
+    
+    SmartImportResult {
+        success: true,
+        detected_mod_type: Some(mod_type),
+        imported_configs: imported_files,
+        target_mod_path: Some(target_mod_path),
+        error: None,
+    }
 }

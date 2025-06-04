@@ -62,20 +62,6 @@ interface ExternalImportResult {
   error?: string;
 }
 
-interface PreviewResult {
-  success: boolean;
-  backup_info?: {
-    name: string;
-    version: string;
-    mod_name: string;
-    author?: string;
-    description?: string;
-    created_at?: string;
-    shared?: boolean;
-  };
-  config_files: string[];
-  error?: string;
-}
 
 interface IconUpdateResult {
   success: boolean;
@@ -83,20 +69,33 @@ interface IconUpdateResult {
   error?: string;
 }
 
-interface ModIconConfig {
-  mod_name: string;
-  icon_url?: string;
-  icon_data?: string;
+interface SmartImportResult {
+  success: boolean;
+  detected_mod_type?: string;
+  imported_configs: string[];
+  target_mod_path?: string;
+  error?: string;
+}
+
+interface ExportSelectResult {
+  success: boolean;
+  selected_path?: string;
+  error?: string;
 }
 
 const MaterialHomePage: React.FC = () => {
+  const [resultData, setResultData] = useState<{
+    type: "backup" | "import" | "share" | "external";
+    success: boolean;
+    data: any;
+  } | null>(null);
   const [scanResult, setScanResult] = useState<ConfigScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedMod, setSelectedMod] = useState<ModConfig | null>(null);
   const [filterType, setFilterType] = useState("all");
   const [backupName, setBackupName] = useState("");
   const [backupVersion, setBackupVersion] = useState("1.0.0");
-  const [showBackupDialog, setShowBackupDialog] = useState(false);
+  const [, setShowBackupDialog] = useState(false);
   const [backupFiles, setBackupFiles] = useState<BackupFileInfo[]>([]);
   const [selectedBackupFile, setSelectedBackupFile] = useState("");
   const [notification, setNotification] = useState<NotificationState>({
@@ -107,18 +106,19 @@ const MaterialHomePage: React.FC = () => {
   });
   const [currentOperation, setCurrentOperation] = useState<string>("");
   const [showResultModal, setShowResultModal] = useState(false);
-  const [resultData, setResultData] = useState<{
-    type: 'backup' | 'import';
-    success: boolean;
-    data: BackupResult | ImportResult;
-  } | null>(null);
-  const [activeTab, setActiveTab] = useState<'scan' | 'backup' | 'import'>('scan');
-
+  const [activeTab, setActiveTab] = useState<'scan' | 'backup' | 'import' | 'share' | 'external'>('scan');
   // アイコン関連の状態
   const [showIconDialog, setShowIconDialog] = useState(false);
   const [selectedModForIcon, setSelectedModForIcon] = useState<ModConfig | null>(null);
   const [iconUrl, setIconUrl] = useState("");
   const [updatingIcon, setUpdatingIcon] = useState(false);
+
+  // シェア機能の状態
+  const [sharing, setSharing] = useState(false);
+
+  // 外部パックインポート機能の状態
+  const [importing, setImporting] = useState(false);
+  const [externalImporting, setExternalImporting] = useState(false);
 
   // Scan Minecraft Configs
   const scanMinecraftConfigs = async () => {
@@ -168,9 +168,9 @@ const MaterialHomePage: React.FC = () => {
 
   // Show Result Modal
   const showResult = (
-    type: 'backup' | 'import',
+    type: 'backup' | 'import' | 'share' | 'external',
     success: boolean,
-    data: BackupResult | ImportResult
+    data: BackupResult | ImportResult | ShareResult | ExternalImportResult | { error?: string }
   ) => {
     setResultData({ type, success, data });
     setShowResultModal(true);
@@ -293,7 +293,6 @@ const MaterialHomePage: React.FC = () => {
     setSelectedModForIcon(null);
     setIconUrl("");
   };
-
   // デフォルトアイコンを設定
   const setDefaultIcon = async () => {
     if (!selectedModForIcon) return;
@@ -302,6 +301,168 @@ const MaterialHomePage: React.FC = () => {
     setShowIconDialog(false);
     setSelectedModForIcon(null);
     setIconUrl("");
+  };
+
+  // シェア機能: MOD設定をエクスポート
+  const handleShare = async () => {
+    const shareFileName = "test.pexPack";
+    setSharing(true);
+    setCurrentOperation(`${selectedMod?.name}の設定をエクスポート中...`);
+    try {
+      const targetPath =
+        "C:/Users/PC_User/Desktop/GItMatrix/ClientBedrock/other/configMane/src-tauri/target/debug/test.pexPack";
+      const result: any = await invoke("share_config_backup", {
+        backupFilename: shareFileName,
+        targetPath: targetPath,
+      });
+      if (result.success && result.shared_path) {
+        showResult("share", true, result);
+      } else {
+        showResult("share", false, result);
+      }
+    } catch (error) {
+      showResult("share", false, { error: error?.toString?.() || "シェア失敗" });
+    } finally {
+      setSharing(false);
+      setCurrentOperation("");
+    }
+  };
+  // 外部パックインポート機能
+  const handleExternalImport = async () => {
+    if (!selectedMod) {
+      showNotification('warning', '選択不備', 'インポート先のMODを選択してください');
+      return;
+    }
+
+    setExternalImporting(true);
+    setCurrentOperation("外部パックファイルを選択中...");
+    
+    try {
+      // ファイル選択ダイアログを開く
+      const fileSelectResult: any = await invoke("select_external_pack_file");
+      
+      if (!fileSelectResult.success || !fileSelectResult.file_path) {
+        showNotification('info', 'キャンセル', 'ファイルが選択されませんでした');
+        return;
+      }
+
+      setCurrentOperation("外部パックをインポート中...");
+      
+      // 選択されたファイルをインポート
+      const result: any = await invoke("import_external_backup", {
+        filePath: fileSelectResult.file_path,
+        targetModName: selectedMod.name,
+        forceImport: true,
+      });
+      
+      if (result.success) {
+        showResult("external", true, result);
+        // MODリストを再読み込み
+        await scanMinecraftConfigs();
+      } else {
+        showResult("external", false, result);
+      }
+    } catch (error) {
+      showResult("external", false, { error: error?.toString?.() || "外部パックインポート失敗" });
+    } finally {
+      setExternalImporting(false);
+      setCurrentOperation("");
+    }
+  };
+
+  // スマートインポート機能：パックタイプを自動検知してMODにインポート
+  const handleSmartImport = async () => {
+    setExternalImporting(true);
+    setCurrentOperation("外部パックファイルを選択中...");
+    
+    try {
+      // ファイル選択ダイアログを開く
+      const fileSelectResult: any = await invoke("select_external_pack_file");
+      
+      if (!fileSelectResult.success || !fileSelectResult.file_path) {
+        showNotification('info', 'キャンセル', 'ファイルが選択されませんでした');
+        return;
+      }
+
+      setCurrentOperation("パックタイプを検知してインポート中...");
+      
+      // スマートインポートを実行
+      const result: SmartImportResult = await invoke("smart_import_pack", {
+        filePath: fileSelectResult.file_path,
+      });
+        if (result.success) {
+        // 成功メッセージを含む結果オブジェクトを作成
+        const resultWithMessage = {
+          ...result,
+          success_message: `${result.detected_mod_type}として自動検知し、${result.imported_configs.length}個の設定ファイルをインポートしました`
+        };
+        showResult("external", true, resultWithMessage);
+        // MODリストを再読み込み
+        await scanMinecraftConfigs();
+      } else {
+        showResult("external", false, result);
+      }
+    } catch (error) {
+      showResult("external", false, { error: error?.toString?.() || "スマートインポート失敗" });
+    } finally {
+      setExternalImporting(false);
+      setCurrentOperation("");
+    }
+  };
+
+  // カスタムエクスポート機能：ユーザー指定の場所にpexPackを出力
+  const handleCustomExport = async () => {
+    if (!selectedMod) {
+      showNotification('warning', '選択不備', 'エクスポートするMODを選択してください');
+      return;
+    }
+
+    if (!selectedMod.has_config) {
+      showNotification('warning', '設定なし', 'このMODにはエクスポート可能な設定がありません');
+      return;
+    }
+
+    setSharing(true);
+    setCurrentOperation("エクスポート場所を選択中...");
+    
+    try {
+      // ファイル保存ダイアログを開く
+      const exportSelectResult: ExportSelectResult = await invoke("select_export_location", {
+        defaultFilename: `${selectedMod.name}_config_${new Date().toISOString().split('T')[0]}.pexPack`
+      });
+      
+      if (!exportSelectResult.success || !exportSelectResult.selected_path) {
+        showNotification('info', 'キャンセル', 'エクスポート場所が選択されませんでした');
+        return;
+      }
+
+      setCurrentOperation(`${selectedMod.name}の設定をエクスポート中...`);
+      
+      // カスタムエクスポートを実行
+      const result: BackupResult = await invoke("export_config_to_custom_location", {
+        modName: selectedMod.name,
+        backupName: `${selectedMod.name}_shared`,
+        version: "1.0.0",
+        author: "User",
+        description: `${selectedMod.name}の設定エクスポート`,
+        exportPath: exportSelectResult.selected_path,
+      });
+        if (result.success) {
+        const resultWithMessage = {
+          ...result,
+          success_message: `設定が正常にエクスポートされました`,
+          export_path: exportSelectResult.selected_path
+        };
+        showResult("share", true, resultWithMessage);
+      } else {
+        showResult("share", false, result);
+      }
+    } catch (error) {
+      showResult("share", false, { error: error?.toString?.() || "カスタムエクスポート失敗" });
+    } finally {
+      setSharing(false);
+      setCurrentOperation("");
+    }
   };
 
   // Filter MODs
@@ -343,9 +504,6 @@ const MaterialHomePage: React.FC = () => {
     }
   };
 
-  const getModStatusIcon = (hasConfig: boolean) => {
-    return hasConfig ? '✅' : '❌';
-  };
 
   return (
     <div className="material-app">
@@ -399,9 +557,7 @@ const MaterialHomePage: React.FC = () => {
             Minecraft MOD Configuration Manager
           </div>
         </div>
-      </div>
-
-      {/* Navigation Tabs */}
+      </div>      {/* Navigation Tabs */}
       <div className="tab-container material-tabs">
         <div className="tab-list">
           <button
@@ -427,31 +583,41 @@ const MaterialHomePage: React.FC = () => {
             <span className="tab-icon">📥</span>
             インポート
           </button>
+          <button
+            className={`tab material-tab ${activeTab === 'share' ? 'tab-active material-tab-active' : ''}`}
+            onClick={() => setActiveTab('share')}
+            disabled={!selectedMod}
+          >
+            <span className="tab-icon">📤</span>
+            シェア
+          </button>
+          <button
+            className={`tab material-tab ${activeTab === 'external' ? 'tab-active material-tab-active' : ''}`}
+            onClick={() => setActiveTab('external')}
+          >
+            <span className="tab-icon">📦</span>
+            外部パック
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="main-container material-main-container">
-        {/* Scan Tab */}
+      <div className="main-container material-main-container">        {/* Scan Tab */}
         {activeTab === 'scan' && (
-          <div className="tab-content material-tab-content">            <div className="scan-section-card">
+          <div className="tab-content material-tab-content">
+            <div className="scan-section-card">
               <div className="scan-section-header">
-                <h2 className="scan-section-title">MOD検索とスキャン</h2>
+                <h2 className="scan-section-title">🔍 MOD検索とスキャン</h2>
                 <p className="scan-section-subtitle">MinecraftにインストールされているMODを検索します</p>
-              </div>              <div className="scan-section-actions">
+              </div>
+              <div className="scan-section-actions">
                 <button
                   onClick={scanMinecraftConfigs}
                   disabled={loading}
-                  className={`btn-base btn-primary btn-lg scan-fab-fixed ${loading ? 'btn-loading' : ''}`}
+                  className={`scan-fab-button ${loading ? 'btn-loading' : ''}`}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 160 }}>
-                    <span style={{ width: 20, height: 20, display: 'inline-block', marginRight: 8 }}>
-                      {!loading && <span className="button-icon">🔍</span>}
-                    </span>
-                    <span style={{ minWidth: 120, textAlign: 'left' }}>
-                      {loading ? 'スキャン中...' : 'MOD Configスキャン'}
-                    </span>
-                  </span>
+                  {!loading && <span className="button-icon">🔍</span>}
+                  {loading ? 'スキャン中...' : 'MOD Configスキャン'}
                 </button>
 
                 {scanResult && (
@@ -475,70 +641,78 @@ const MaterialHomePage: React.FC = () => {
                   </div>
                 )}
               </div>
-            </div>
-
-            {scanResult && (
+            </div>            {scanResult && (
               <>
-                {/* Filter Controls */}
-                <div className="card material-card">
-                  <div className="card-content material-card-content">
-                    <div className="filter-section material-filter-section">
-                      <label className="filter-label material-filter-label">フィルター:</label>
-                      <div className="chip-group material-chip-group">
-                        {[
-                          { value: 'all', label: '🗂️ すべて', count: filteredMods.length },
-                          { value: 'with_config', label: '⚙️ Config有り', count: scanResult.mods.filter(m => m.has_config).length },
-                          { value: 'without_config', label: '❌ Config無し', count: scanResult.mods.filter(m => !m.has_config).length },
-                          { value: 'flarial', label: '🎯 Flarial', count: scanResult.mods.filter(m => m.mod_type === 'Flarial').length },
-                          { value: 'oderso', label: '🔧 OderSo', count: scanResult.mods.filter(m => m.mod_type === 'OderSo').length }
-                        ].map(filter => (                          <button
-                            key={filter.value}
-                            className={`btn-base btn-sm chip material-chip ${filterType === filter.value ? 'btn-primary chip-selected material-chip-selected' : 'btn-ghost'}`}
-                            onClick={() => setFilterType(filter.value)}
-                          >
-                            {filter.label} ({filter.count})
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                {/* Quick Filter Bar for Easy Access */}
+                <div className="material-quick-filter-bar">
+                  <div className="material-quick-filter-title">クイックフィルター</div>
+                  <div className="material-quick-filter-buttons">
+                    <button
+                      className={`material-quick-filter-button ${filterType === 'all' ? 'active' : ''}`}
+                      onClick={() => setFilterType('all')}
+                    >
+                      📁 すべて ({scanResult.total_mods})
+                    </button>
+                    <button
+                      className={`material-quick-filter-button ${filterType === 'with_config' ? 'active' : ''}`}
+                      onClick={() => setFilterType('with_config')}
+                    >
+                      🟢 Config有り ({scanResult.mods.filter(m => m.has_config).length})
+                    </button>
+                    <button
+                      className={`material-quick-filter-button ${filterType === 'without_config' ? 'active' : ''}`}
+                      onClick={() => setFilterType('without_config')}
+                    >
+                      🔴 Config無し ({scanResult.mods.filter(m => !m.has_config).length})
+                    </button>
+                    <button
+                      className={`material-quick-filter-button ${filterType === 'flarial' ? 'active' : ''}`}
+                      onClick={() => setFilterType('flarial')}
+                    >
+                      🎯 Flarial ({scanResult.mods.filter(m => m.mod_type === 'Flarial').length})
+                    </button>
+                    <button
+                      className={`material-quick-filter-button ${filterType === 'oderso' ? 'active' : ''}`}
+                      onClick={() => setFilterType('oderso')}
+                    >
+                      ⚙️ OderSo ({scanResult.mods.filter(m => m.mod_type === 'OderSo').length})
+                    </button>
                   </div>
-                </div>
-
-                {/* MOD List */}
-                <div className="card material-card">
-                  <div className="card-header material-card-header">
-                    <h3 className="card-title material-card-title">MOD一覧</h3>
-                    <p className="card-subtitle material-card-subtitle">{filteredMods.length}個のMODが表示されています</p>
+                </div>{/* MOD List */}
+                <div className="material-card">
+                  <div className="material-card-header">
+                    <h3 className="material-card-title">📋 MOD一覧</h3>
+                    <p className="material-card-subtitle">{filteredMods.length}個のMODが表示されています</p>
                   </div>
-                  <div className="card-content material-card-content">
-                    <div className="mod-list material-mod-list">
+                  <div className="material-card-content">
+                    <div className="material-mod-list">
                       {filteredMods.map((mod, index) => (
                         <div
                           key={index}
-                          className={`mod-card material-mod-card ${selectedMod?.name === mod.name ? 'mod-card-selected material-mod-card-selected' : ''}`}
+                          className={`material-mod-card ${selectedMod?.name === mod.name ? 'material-mod-card-selected' : ''}`}
                           onClick={() => setSelectedMod(mod)}
                         >
-                          <div className="mod-card-header material-mod-card-header">
-                            <div className="mod-card-icon material-mod-card-icon">
+                          <div className="material-mod-card-header">
+                            <div className="material-mod-card-icon">
                               {mod.icon_data ? (
                                 <img 
                                   src={mod.icon_data} 
                                   alt={`${mod.name} アイコン`}
-                                  className="mod-icon material-mod-icon"
-                                  style={{ width: '32px', height: '32px', borderRadius: '4px' }}
+                                  className="material-mod-icon"
                                 />
                               ) : (
-                                <div className="default-mod-icon material-default-mod-icon">
+                                <div className="material-default-mod-icon">
                                   {getModTypeIcon(mod.mod_type)}
                                 </div>
                               )}
                             </div>
-                            <div className="mod-card-info material-mod-card-info">
-                              <h4 className="mod-card-title material-mod-card-title">{mod.name}</h4>
-                              <p className="mod-card-type material-mod-card-type">{mod.mod_type}</p>
-                            </div>                            <div className="mod-card-actions material-mod-card-actions">
+                            <div className="material-mod-card-info">
+                              <h4 className="material-mod-card-title">{mod.name}</h4>
+                              <p className="material-mod-card-type">{mod.mod_type}</p>
+                            </div>
+                            <div className="material-mod-card-actions">
                               <button
-                                className="btn-base btn-icon btn-ghost material-icon-button"
+                                className="material-icon-button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openIconDialog(mod);
@@ -547,25 +721,24 @@ const MaterialHomePage: React.FC = () => {
                               >
                                 🎨
                               </button>
-                            </div>
-                            <div className="mod-card-status material-mod-card-status">
-                              <span className={`status-badge material-status-badge ${mod.has_config ? 'status-success material-status-success' : 'status-error material-status-error'}`}>
-                                {getModStatusIcon(mod.has_config)}
-                                {mod.has_config ? 'Config有り' : 'Config無し'}
+                            </div>                            <div className="material-mod-card-status">
+                              <span className={`material-status-badge ${mod.has_config ? 'material-status-available' : 'material-status-unavailable'}`}>
+                                <span className="status-indicator">{mod.has_config ? '🟢' : '🔴'}</span>
+                                <span className="status-text">{mod.has_config ? 'Config利用可能' : 'Config無し'}</span>
                               </span>
                             </div>
                           </div>
-                          <div className="mod-card-details material-mod-card-details">
-                            <div className="mod-card-path material-mod-card-path">📁 {mod.config_path}</div>
+                          <div className="material-mod-card-details">
+                            <div className="material-mod-card-path">📁 {mod.config_path}</div>
                             {mod.has_config && mod.config_files.length > 0 && (
-                              <div className="mod-card-files material-mod-card-files">
-                                <span className="files-count material-files-count">📄 {mod.config_files.length}個のファイル</span>
-                                <div className="files-preview material-files-preview">
+                              <div className="material-mod-card-files">
+                                <span className="material-files-count">📄 {mod.config_files.length}個のファイル</span>
+                                <div className="material-files-preview">
                                   {mod.config_files.slice(0, 3).map((file, idx) => (
-                                    <span key={idx} className="file-chip material-file-chip">{file}</span>
+                                    <span key={idx} className="material-file-chip">{file}</span>
                                   ))}
                                   {mod.config_files.length > 3 && (
-                                    <span className="file-chip file-chip-more material-file-chip-more">
+                                    <span className="material-file-chip material-file-chip-more">
                                       +{mod.config_files.length - 3}
                                     </span>
                                   )}
@@ -581,27 +754,38 @@ const MaterialHomePage: React.FC = () => {
               </>
             )}
           </div>
-        )}
-
-        {/* Backup Tab */}
+        )}        {/* Backup Tab */}
         {activeTab === 'backup' && selectedMod && (
           <div className="tab-content material-tab-content">
-            <div className="card material-card">
-              <div className="card-header material-card-header">
-                <h2 className="card-title material-card-title">バックアップ作成</h2>
-                <p className="card-subtitle material-card-subtitle">選択されたMODの設定をバックアップします</p>
+            <div className="material-card">
+              <div className="material-card-header">
+                <h2 className="material-card-title">💾 バックアップ作成</h2>
+                <p className="material-card-subtitle">選択されたMODの設定をバックアップします</p>
               </div>
-              <div className="card-content material-card-content">
-                <div className="selected-mod-info material-selected-mod-info">
-                  <div className="selected-mod-card material-selected-mod-card">
-                    <div className="selected-mod-icon material-selected-mod-icon">{getModTypeIcon(selectedMod.mod_type)}</div>
-                    <div className="selected-mod-details material-selected-mod-details">
-                      <h3 className="selected-mod-name material-selected-mod-name">{selectedMod.name}</h3>
-                      <p className="selected-mod-type material-selected-mod-type">{selectedMod.mod_type}</p>
-                      <span className={`status-badge material-status-badge ${selectedMod.has_config ? 'status-success material-status-success' : 'status-error material-status-error'}`}>
-                        {getModStatusIcon(selectedMod.has_config)}
-                        {selectedMod.has_config ? 'Config利用可能' : 'Config未検出'}
-                      </span>
+              <div className="material-card-content">
+                <div className="material-selected-mod-info">
+                  <div className="material-selected-mod-card">
+                    <div className="material-selected-mod-icon">
+                      {selectedMod.icon_data ? (
+                        <img 
+                          src={selectedMod.icon_data} 
+                          alt={`${selectedMod.name} アイコン`}
+                          className="material-mod-icon"
+                        />
+                      ) : (
+                        <div className="material-default-mod-icon">
+                          {getModTypeIcon(selectedMod.mod_type)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="material-selected-mod-details">
+                      <h3 className="material-selected-mod-name">{selectedMod.name}</h3>
+                      <p className="material-selected-mod-type">{selectedMod.mod_type}</p>
+                      {selectedMod.config_files && selectedMod.config_files.length > 0 && (
+                        <p className="material-config-file-count">
+                          📁 {selectedMod.config_files.length}個の設定ファイル
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -627,12 +811,13 @@ const MaterialHomePage: React.FC = () => {
                         placeholder="1.0.0"
                         className="form-input"
                       />
-                    </div>                    <button
+                    </div>
+                    <button
                       onClick={handleBackupConfig}
                       disabled={!backupName.trim() || loading}
                       className={`btn-base btn-primary btn-md btn-with-icon ${loading ? 'btn-loading' : ''}`}
                     >
-                      {!loading && <span className="button-icon btn-icon-left">💾</span>}
+                      {!loading && <span className="btn-icon-left">💾</span>}
                       {loading ? 'バックアップ作成中...' : 'バックアップ作成'}
                     </button>
                   </div>
@@ -648,23 +833,38 @@ const MaterialHomePage: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Import Tab */}
+        )}        {/* Import Tab */}
         {activeTab === 'import' && selectedMod && (
           <div className="tab-content material-tab-content">
-            <div className="card material-card">
-              <div className="card-header material-card-header">
-                <h2 className="card-title material-card-title">Configインポート</h2>
-                <p className="card-subtitle material-card-subtitle">バックアップからMOD設定を復元します</p>
+            <div className="material-card">
+              <div className="material-card-header">
+                <h2 className="material-card-title">📥 Configインポート</h2>
+                <p className="material-card-subtitle">バックアップからMOD設定を復元します</p>
               </div>
-              <div className="card-content material-card-content">
-                <div className="selected-mod-info material-selected-mod-info">
-                  <div className="selected-mod-card material-selected-mod-card">
-                    <div className="selected-mod-icon material-selected-mod-icon">{getModTypeIcon(selectedMod.mod_type)}</div>
-                    <div className="selected-mod-details material-selected-mod-details">
-                      <h3 className="selected-mod-name material-selected-mod-name">{selectedMod.name}</h3>
-                      <p className="selected-mod-type material-selected-mod-type">{selectedMod.mod_type}</p>
+              <div className="material-card-content">
+                <div className="material-selected-mod-info">
+                  <div className="material-selected-mod-card">
+                    <div className="material-selected-mod-icon">
+                      {selectedMod.icon_data ? (
+                        <img 
+                          src={selectedMod.icon_data} 
+                          alt={`${selectedMod.name} アイコン`}
+                          className="material-mod-icon"
+                        />
+                      ) : (
+                        <div className="material-default-mod-icon">
+                          {getModTypeIcon(selectedMod.mod_type)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="material-selected-mod-details">
+                      <h3 className="material-selected-mod-name">{selectedMod.name}</h3>
+                      <p className="material-selected-mod-type">{selectedMod.mod_type}</p>
+                      {selectedMod.config_files && selectedMod.config_files.length > 0 && (
+                        <p className="material-config-file-count">
+                          📁 {selectedMod.config_files.length}個の設定ファイル
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -689,12 +889,13 @@ const MaterialHomePage: React.FC = () => {
                         ))
                       )}
                     </select>
-                  </div>                  <button
+                  </div>
+                  <button
                     onClick={handleImportConfig}
                     disabled={!selectedBackupFile || loading}
                     className={`btn-base btn-primary btn-md btn-with-icon ${loading ? 'btn-loading' : ''}`}
                   >
-                    {!loading && <span className="button-icon btn-icon-left">📥</span>}
+                    {!loading && <span className="btn-icon-left">📥</span>}
                     {loading ? 'インポート中...' : 'インポート実行'}
                   </button>
 
@@ -712,6 +913,320 @@ const MaterialHomePage: React.FC = () => {
               </div>
             </div>
           </div>
+        )}        {/* Share Tab */}
+        {activeTab === 'share' && selectedMod && (
+          <div className="tab-content material-tab-content">
+            <div className="material-card">
+              <div className="material-card-header">
+                <h2 className="material-card-title">
+                  📤 MOD設定をシェア
+                </h2>
+                <p className="material-card-subtitle">
+                  現在のMOD設定をエクスポートして他のユーザーと共有できるファイルを作成します
+                </p>
+              </div>
+              <div className="material-card-content">                <div className="material-selected-mod-info">
+                  <div className="material-selected-mod-card">
+                    <div className="material-selected-mod-icon">
+                      {selectedMod.icon_data ? (
+                        <img 
+                          src={selectedMod.icon_data} 
+                          alt={`${selectedMod.name} アイコン`}
+                          className="material-mod-icon"
+                        />
+                      ) : (
+                        <div className="material-default-mod-icon">
+                          {getModTypeIcon(selectedMod.mod_type)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="material-selected-mod-details">
+                      <h3 className="material-selected-mod-name">{selectedMod.name}</h3>
+                      <p className="material-selected-mod-type">{selectedMod.mod_type}</p>
+                      {selectedMod.config_files && selectedMod.config_files.length > 0 && (
+                        <p className="material-config-file-count">
+                          📁 {selectedMod.config_files.length}個の設定ファイル
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>{selectedMod.has_config ? (
+                  <div className="material-share-section">
+                    <div className="material-info-grid">
+                      <div className="material-info-card">
+                        <div className="material-info-card-header">
+                          <span className="material-info-card-icon">📊</span>
+                          <h4 className="material-info-card-title">エクスポート内容</h4>
+                        </div>
+                        <div className="material-info-card-content">
+                          <div className="material-info-item">
+                            <span className="material-info-label">設定ファイル数:</span>
+                            <span className="material-info-value">{selectedMod.config_files?.length || 0}個</span>
+                          </div>
+                          <div className="material-info-item">
+                            <span className="material-info-label">MODタイプ:</span>
+                            <span className="material-info-value">{selectedMod.mod_type}</span>
+                          </div>
+                          <div className="material-info-item">
+                            <span className="material-info-label">出力形式:</span>
+                            <span className="material-info-value">ZIP アーカイブ</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="material-info-card">
+                        <div className="material-info-card-header">
+                          <span className="material-info-card-icon">📋</span>
+                          <h4 className="material-info-card-title">含まれるファイル</h4>
+                        </div>
+                        <div className="material-info-card-content">
+                          <div className="material-config-files-preview">
+                            {selectedMod.config_files.slice(0, 5).map((file, idx) => (
+                              <div key={idx} className="material-config-file-item">
+                                <span className="material-file-icon">📄</span>
+                                <span className="material-file-name">{file}</span>
+                              </div>
+                            ))}
+                            {selectedMod.config_files.length > 5 && (
+                              <div className="material-config-file-item material-more-files">
+                                <span className="material-file-icon">📂</span>
+                                <span className="material-file-name">
+                                  +{selectedMod.config_files.length - 5}個のファイル
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>                    <div className="material-share-actions">
+                      <div className="material-export-button-grid">
+                        <button
+                          onClick={handleShare}
+                          disabled={sharing}
+                          className={`btn-base btn-secondary btn-lg btn-with-icon ${sharing ? 'btn-loading' : ''}`}
+                        >
+                          {sharing ? (
+                            <>
+                              <span className="btn-loading-spinner"></span>
+                              <span>エクスポート中...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="btn-icon-left">🏠</span>
+                              <span>アプリフォルダにエクスポート</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={handleCustomExport}
+                          disabled={sharing}
+                          className={`btn-base btn-primary btn-lg btn-with-icon ${sharing ? 'btn-loading' : ''}`}
+                        >
+                          {sharing ? (
+                            <>
+                              <span className="btn-loading-spinner"></span>
+                              <span>エクスポート中...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="btn-icon-left">📁</span>
+                              <span>保存場所を選択してエクスポート</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="warning-message">
+                    <div className="warning-icon">⚠️</div>
+                    <div className="warning-text">
+                      <h4>Configが見つかりません</h4>
+                      <p>このMODにはエクスポート可能な設定ファイルがありません。</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}        {/* External Pack Import Tab */}
+        {activeTab === 'external' && (
+          <div className="tab-content material-tab-content">
+            <div className="material-card">
+              <div className="material-card-header">
+                <h2 className="material-card-title">
+                  📦 外部パックインポート
+                </h2>
+                <p className="material-card-subtitle">
+                  外部ソースからMOD設定パックをインポートします
+                </p>
+              </div>              <div className="material-card-content">
+                {selectedMod && (
+                  <div className="material-selected-mod-info">
+                    <div className="material-selected-mod-card">
+                      <div className="material-selected-mod-icon">
+                        {selectedMod.icon_data ? (
+                          <img 
+                            src={selectedMod.icon_data} 
+                            alt={`${selectedMod.name} アイコン`}
+                            className="material-mod-icon"
+                          />
+                        ) : (
+                          <div className="material-default-mod-icon">
+                            {getModTypeIcon(selectedMod.mod_type)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="material-selected-mod-details">
+                        <h3 className="material-selected-mod-name">{selectedMod.name}</h3>
+                        <p className="material-selected-mod-type">
+                          📌 インポート先: {selectedMod.mod_type}
+                        </p>
+                        <p className="material-config-file-count">
+                          📁 現在: {selectedMod.config_files?.length || 0}個の設定ファイル
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="material-external-import-section">
+                  <div className="material-info-grid">
+                    <div className="material-info-card">
+                      <div className="material-info-card-header">
+                        <span className="material-info-card-icon">📥</span>
+                        <h4 className="material-info-card-title">サポート形式</h4>
+                      </div>
+                      <div className="material-info-card-content">
+                        <div className="material-supported-formats">
+                          <div className="material-format-item">
+                            <span className="material-format-icon">📄</span>
+                            <span className="material-format-name">ZIP アーカイブ</span>
+                          </div>
+                          <div className="material-format-item">
+                            <span className="material-format-icon">📂</span>
+                            <span className="material-format-name">フォルダ形式</span>
+                          </div>
+                          <div className="material-format-item">
+                            <span className="material-format-icon">⚙️</span>
+                            <span className="material-format-name">ConfigManager形式</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="material-info-card">
+                      <div className="material-info-card-header">
+                        <span className="material-info-card-icon">🔄</span>
+                        <h4 className="material-info-card-title">インポート処理</h4>
+                      </div>
+                      <div className="material-info-card-content">
+                        <div className="material-process-steps">
+                          <div className="material-step-item">
+                            <span className="material-step-number">1</span>
+                            <span className="material-step-text">パック選択</span>
+                          </div>
+                          <div className="material-step-item">
+                            <span className="material-step-number">2</span>
+                            <span className="material-step-text">内容検証</span>
+                          </div>
+                          <div className="material-step-item">
+                            <span className="material-step-number">3</span>
+                            <span className="material-step-text">設定適用</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>                  <div className="material-external-import-actions">
+                    <div className="material-import-button-grid">
+                      <button
+                        onClick={handleExternalImport}
+                        disabled={externalImporting || !selectedMod}
+                        className={`material-external-import-button ${externalImporting ? 'btn-loading' : ''} ${!selectedMod ? 'btn-disabled' : ''}`}
+                      >
+                        {externalImporting ? (
+                          <>
+                            <span className="btn-loading-spinner"></span>
+                            <span>インポート中...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="btn-icon-left">📁</span>
+                            <span>手動インポート（MOD指定）</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={handleSmartImport}
+                        disabled={externalImporting}
+                        className={`material-smart-import-button ${externalImporting ? 'btn-loading' : ''}`}
+                      >
+                        {externalImporting ? (
+                          <>
+                            <span className="btn-loading-spinner"></span>
+                            <span>検知中...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="btn-icon-left">🧠</span>
+                            <span>スマートインポート（自動検知）</span>
+                          </>
+                        )}
+                      </button>                    </div>
+                    
+                    <div className="material-import-methods-info">
+                      <div className="material-method-card">
+                        <div className="material-method-header">
+                          <span className="material-method-icon">📁</span>
+                          <h4>手動インポート</h4>
+                        </div>
+                        <p>選択したMODに設定をインポートします。MODタイプが異なる場合でも強制的にインポートできます。</p>
+                      </div>
+                      
+                      <div className="material-method-card">
+                        <div className="material-method-header">
+                          <span className="material-method-icon">🧠</span>
+                          <h4>スマートインポート</h4>
+                        </div>
+                        <p>pexPackの内容を自動的に分析してMODタイプを検知し、適切なMODフォルダにインポートします。</p>
+                      </div>
+                    </div>
+                    
+                    {!selectedMod && (
+                      <div className="material-import-warning">
+                        <span className="warning-icon">⚠️</span>
+                        <span className="warning-text">
+                          MODスキャンタブでインポート先のMODを選択してください
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="material-hint-section">
+                    <div className="material-hint-title">
+                      💡 ヒント
+                    </div>
+                    <div className="material-hint-content">
+                      pexPack形式のファイルを選択すると、自動的に選択されたMODに設定が適用されます。
+                      ファイルダイアログでは .pexPack 拡張子のファイルのみが表示されます。
+                    </div>
+                  </div>
+
+                  <div className="material-warning-section">
+                    <div className="material-warning-title">
+                      ⚠️ 注意
+                    </div>
+                    <div className="material-warning-content">
+                      インポート前に重要な設定のバックアップを作成することをお勧めします。
+                      外部パックのインポートは既存の設定を上書きする可能性があります。
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -720,12 +1235,20 @@ const MaterialHomePage: React.FC = () => {
         <div className="modal-backdrop material-modal-backdrop">
           <div className="modal-container material-modal-container">
             <div className="modal-header material-modal-header">
-              <div className={`modal-icon material-modal-icon ${resultData.success ? 'icon-success material-icon-success' : 'icon-error material-icon-error'}`}>
-                {resultData.success ? '✅' : '❌'}
+              <div
+                className={`modal-icon material-modal-icon ${resultData.success ? "icon-success material-icon-success" : "icon-error material-icon-error"}`}
+              >
+                {resultData.success ? "✅" : "❌"}
               </div>
               <h3 className="modal-title material-modal-title">
-                {resultData.type === 'backup' ? 'バックアップ' : 'インポート'}
-                {resultData.success ? '完了' : '失敗'}
+                {resultData.type === "backup"
+                  ? "バックアップ"
+                  : resultData.type === "share"
+                  ? "シェア"
+                  : resultData.type === "external"
+                  ? "外部パック"
+                  : "インポート"}
+                {resultData.success ? "完了" : "失敗"}
               </h3>
               <button
                 className="modal-close material-modal-close"
@@ -734,35 +1257,71 @@ const MaterialHomePage: React.FC = () => {
                 ✕
               </button>
             </div>
-
             <div className="modal-content">
               {resultData.success ? (
                 <div className="result-success">
-                  {resultData.type === 'backup' ? (
+                  {resultData.type === "backup" && resultData.data.backup_path && (
                     <div>
                       <p>🎉 バックアップが正常に作成されました！</p>
-                      {(resultData.data as BackupResult).backup_path && (
-                        <div className="result-details">
-                          <strong>保存場所:</strong>
-                          <code>{(resultData.data as BackupResult).backup_path}</code>
-                        </div>
-                      )}
+                      <div className="result-details">
+                        <strong>保存場所:</strong>
+                        <code>{resultData.data.backup_path}</code>
+                      </div>
                     </div>
-                  ) : (
+                  )}
+                  {resultData.type === "share" && resultData.data.shared_path && (
+                    <div>
+                      <p>🎉 シェアが正常に完了しました！</p>
+                      <div className="result-details">
+                        <strong>保存場所:</strong>
+                        <code>{resultData.data.shared_path}</code>
+                      </div>
+                    </div>
+                  )}                  {resultData.type === "external" && resultData.data.imported_configs && (
+                    <div>
+                      <p>🎉 外部パックのインポートが正常に完了しました！</p>
+                      <div className="result-details">
+                        <strong>インポートされたファイル ({resultData.data.imported_configs.length}個):</strong>
+                        <ul className="imported-files-list">
+                          {resultData.data.imported_configs.slice(0, 5).map((file: string, index: number) => (
+                            <li key={index} className="imported-file-item">
+                              📄 {file}
+                            </li>
+                          ))}
+                          {resultData.data.imported_configs.length > 5 && (
+                            <li className="imported-file-item more-files">
+                              ... その他 {resultData.data.imported_configs.length - 5}個のファイル
+                            </li>
+                          )}
+                        </ul>
+                        {resultData.data.preview_files && resultData.data.preview_files.length > 0 && (
+                          <div className="preview-info">
+                            <strong>プレビューファイル (最大5個表示):</strong>
+                            <ul className="preview-files-list">
+                              {resultData.data.preview_files.map((file: string, index: number) => (
+                                <li key={index} className="preview-file-item">
+                                  👁️ {file}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {resultData.type === "import" && resultData.data.imported_configs && (
                     <div>
                       <p>🎉 インポートが正常に完了しました！</p>
-                      {(resultData.data as ImportResult).imported_configs && (
-                        <div className="result-details">
-                          <strong>インポートされたファイル ({(resultData.data as ImportResult).imported_configs.length}個):</strong>
-                          <ul className="imported-files-list">
-                            {(resultData.data as ImportResult).imported_configs.map((file, index) => (
-                              <li key={index} className="imported-file-item">
-                                📄 {file}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                      <div className="result-details">
+                        <strong>インポートされたファイル ({resultData.data.imported_configs.length}個):</strong>
+                        <ul className="imported-files-list">
+                          {resultData.data.imported_configs.map((file: string, index: number) => (
+                            <li key={index} className="imported-file-item">
+                              📄 {file}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -771,11 +1330,12 @@ const MaterialHomePage: React.FC = () => {
                   <p>❌ 操作に失敗しました</p>
                   <div className="error-details">
                     <strong>エラー詳細:</strong>
-                    <code>{resultData.data.error || '不明なエラーが発生しました'}</code>
+                    <code>{resultData.data.error || "不明なエラーが発生しました"}</code>
                   </div>
                 </div>
               )}
-            </div>            <div className="modal-actions">
+            </div>
+            <div className="modal-actions">
               <button
                 className="btn-base btn-primary btn-md"
                 onClick={() => setShowResultModal(false)}
@@ -785,84 +1345,130 @@ const MaterialHomePage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Icon Setting Dialog */}
+      )}      {/* Enhanced Icon Setting Modal */}
       {showIconDialog && selectedModForIcon && (
-        <div className="modal-overlay material-modal-overlay" onClick={() => setShowIconDialog(false)}>
-          <div className="modal-content material-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header material-modal-header">
-              <h3 className="modal-title material-modal-title">🎨 MODアイコン設定</h3>
+        <div className="material-modal-overlay" onClick={() => setShowIconDialog(false)}>
+          <div className="material-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="material-modal-header">
+              <h3 className="material-modal-title">
+                🎨 MODアイコン設定
+              </h3>
               <button
-                className="modal-close material-modal-close"
+                className="material-modal-close"
                 onClick={() => setShowIconDialog(false)}
+                title="閉じる"
               >
                 ×
               </button>
             </div>
 
-            <div className="modal-body">
-              <div className="icon-preview-section">
-                <h4>現在のアイコン</h4>
-                <div className="current-icon-display material-current-icon-display">
+            <div className="material-modal-body">
+              <div className="material-icon-preview-section">
+                <h4 className="material-section-title">📱 現在のアイコン</h4>
+                <div className="material-current-icon-display">
                   {selectedModForIcon.icon_data ? (
                     <img 
                       src={selectedModForIcon.icon_data} 
                       alt={`${selectedModForIcon.name} アイコン`}
-                      className="preview-icon material-preview-icon"
-                      style={{ width: '64px', height: '64px', borderRadius: '8px' }}
+                      className="material-preview-icon"
                     />
                   ) : (
-                    <div className="preview-icon-placeholder material-preview-icon-placeholder">
-                      <span style={{ fontSize: '32px' }}>
+                    <div className="material-preview-icon-placeholder">
+                      <span style={{ fontSize: '40px' }}>
                         {getModTypeIcon(selectedModForIcon.mod_type)}
                       </span>
                     </div>
                   )}
-                  <p className="icon-mod-name material-icon-mod-name">{selectedModForIcon.name}</p>
+                  <p className="material-icon-mod-name">{selectedModForIcon.name}</p>
+                  <small style={{ color: '#6c757d', fontSize: '12px' }}>
+                    {selectedModForIcon.mod_type} MOD
+                  </small>
                 </div>
               </div>
 
-              <div className="icon-input-section">
-                <h4>新しいアイコンURL</h4>
+              <div className="material-icon-input-section">
+                <h4 className="material-section-title">🔗 新しいアイコンURL</h4>
                 <input
                   type="url"
-                  className="text-input material-text-input"
+                  className="material-text-input"
                   placeholder="https://example.com/icon.png"
                   value={iconUrl}
                   onChange={(e) => setIconUrl(e.target.value)}
                 />
-                <p className="input-help">
-                  PNGまたはJPEG画像のURLを入力してください。32x32pxにリサイズされます。
+                <p className="material-input-help">
+                  💡 PNG、JPEG、GIF形式の画像URLを入力してください。推奨サイズ: 64x64px以上
                 </p>
+                
+                {/* URL Preview */}
+                {iconUrl && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '12px', 
+                    background: '#f8f9fa', 
+                    borderRadius: '8px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <p style={{ 
+                      margin: '0 0 8px 0', 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      color: '#495057' 
+                    }}>
+                      🔍 プレビュー:
+                    </p>
+                    <img 
+                      src={iconUrl}
+                      alt="プレビュー"
+                      style={{ 
+                        width: '48px', 
+                        height: '48px', 
+                        borderRadius: '8px',
+                        objectFit: 'cover',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-            </div>            <div className="modal-actions">
+            </div>
+
+            <div className="material-modal-actions">
               <button
                 className="btn-base btn-secondary btn-md"
                 onClick={setDefaultIcon}
                 disabled={updatingIcon}
+                title="デフォルトアイコンに戻す"
               >
                 {updatingIcon ? (
                   <>
-                    <div className="button-spinner"></div>
+                    <div className="btn-loading-spinner"></div>
                     処理中...
                   </>
                 ) : (
-                  'デフォルトアイコン'
+                  <>
+                    🔄 デフォルト
+                  </>
                 )}
               </button>
               <button
                 className="btn-base btn-primary btn-md"
                 onClick={saveIcon}
                 disabled={updatingIcon || !iconUrl.trim()}
+                title="新しいアイコンを設定"
               >
                 {updatingIcon ? (
                   <>
-                    <div className="button-spinner"></div>
+                    <div className="btn-loading-spinner"></div>
                     更新中...
                   </>
                 ) : (
-                  'アイコン設定'
+                  <>
+                    💾 アイコン設定
+                  </>
                 )}
               </button>
             </div>
