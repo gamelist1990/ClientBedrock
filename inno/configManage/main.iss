@@ -61,6 +61,7 @@ Source: "..\..\other\configMane\src-tauri\target\release\WebView2Loader.dll"; De
 Source: "..\..\other\configMane\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
 Source: "..\..\other\configMane\pex.txt"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
 Source: "..\lib\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
+Source: "SetShortcutRunAsAdmin.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 ; ___
 
@@ -70,7 +71,9 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\\SetShortcutRunAsAdmin.ps1"" -Shortcut ""{group}\\{#MyAppName}.lnk"""; Flags: runhidden runascurrentuser
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\\SetShortcutRunAsAdmin.ps1"" -Shortcut ""{commondesktop}\\{#MyAppName}.lnk"""; Flags: runhidden runascurrentuser
+
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

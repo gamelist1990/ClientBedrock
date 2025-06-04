@@ -13,7 +13,9 @@
     "targets": ["nsis"],
     "icon": ["icons/icon.ico"],
     "resources": [],
-    "externalBin": []
+    "externalBin": [],
+    "windows": {
+    }
   },
   "app": {
     "windows": [
