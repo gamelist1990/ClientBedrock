@@ -1,9 +1,9 @@
 [package]
-name = "pextool-scanner"
+name = "pexconfig-manager"
 version = "1.0.0"
 description = "PEXtoolにインストールされているものを表示します Tauriアプリ実験版"
 authors = ["Koukunn_"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
