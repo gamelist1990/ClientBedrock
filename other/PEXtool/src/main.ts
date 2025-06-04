@@ -209,31 +209,34 @@ async function getExeFileInfo(exePath: string): Promise<{ productName?: string; 
 async function getToolInfo(toolPath: string, folderName: string): Promise<{ name: string; productName?: string; description: string }> {
     let productName: string | undefined;
     let description: string = 'PEXツール';
-    
-    // 1. pex.txtファイルをチェック（Inno Setupアプリ用）
+      // 1. pex.txtファイルをチェック（Inno Setupアプリ用）
     const pexTextPath = path.join(toolPath, 'pex.txt');
     if (fs.existsSync(pexTextPath)) {
         try {
             const pexContent = await fs.promises.readFile(pexTextPath, 'utf-8');
             const lines = pexContent.split('\n').map(line => line.trim()).filter(line => line);
             
-            if (lines.length > 0) {
-                const firstLine = lines[0];
-                // カンマで区切られている場合
-                if (firstLine.includes(',')) {
-                    const [name, ...descParts] = firstLine.split(',');
-                    return {
-                        name: folderName, // フォルダ名
-                        productName: name.trim(),
-                        description: descParts.join(',').trim() || 'PEXツール'
-                    };
-                } else {
-                    return {
-                        name: folderName, // フォルダ名
-                        productName: firstLine,
-                        description: lines[1] || 'PEXツール'
-                    };
+            let pexName: string | undefined;
+            let pexVersion: string | undefined;
+            let pexDescription: string | undefined;
+            
+            // Name=, Version=, Description= 形式で解析
+            for (const line of lines) {
+                if (line.startsWith('Name=')) {
+                    pexName = line.substring('Name='.length).trim();
+                } else if (line.startsWith('Version=')) {
+                    pexVersion = line.substring('Version='.length).trim();
+                } else if (line.startsWith('Description=')) {
+                    pexDescription = line.substring('Description='.length).trim();
                 }
+            }
+            
+            if (pexName || pexDescription) {
+                return {
+                    name: folderName, // フォルダ名
+                    productName: pexName || folderName,
+                    description: pexDescription || 'PEXツール'
+                };
             }
         } catch (error) {
             log.warn(`Error reading pex.txt: ${pexTextPath}`, error);

@@ -41,9 +41,15 @@
     "files": [
       "dist/**/*",
       "src/renderer/**/*",
-      "node_modules/**/*",
+      "node_modules/**/*",    
       "MCEnc/**/*",
       "assets/**/*"
+    ],
+    "extraFiles": [
+      {
+        "from": "MCEnc",
+        "to": "MCEnc"
+      }
     ],
     "win": {
       "target": "nsis",
