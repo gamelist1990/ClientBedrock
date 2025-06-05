@@ -94,7 +94,7 @@ const MaterialHomePage: React.FC = () => {
   const [selectedMod, setSelectedMod] = useState<ModConfig | null>(null);
   const [filterType, setFilterType] = useState("all");
   const [backupName, setBackupName] = useState("");
-  const [backupVersion, setBackupVersion] = useState("1.0.0");
+  const [backupVersion, setBackupVersion] = useState("1.1.0");
   const [, setShowBackupDialog] = useState(false);
   const [backupFiles, setBackupFiles] = useState<BackupFileInfo[]>([]);
   const [selectedBackupFile, setSelectedBackupFile] = useState("");
@@ -442,7 +442,7 @@ const MaterialHomePage: React.FC = () => {
       const result: BackupResult = await invoke("export_config_to_custom_location", {
         modName: selectedMod.name,
         backupName: `${selectedMod.name}_shared`,
-        version: "1.0.0",
+        version: "1.1.0",
         author: "User",
         description: `${selectedMod.name}の設定エクスポート`,
         exportPath: exportSelectResult.selected_path,
@@ -808,7 +808,7 @@ const MaterialHomePage: React.FC = () => {
                         type="text"
                         value={backupVersion}
                         onChange={(e) => setBackupVersion(e.target.value)}
-                        placeholder="1.0.0"
+                        placeholder="1.1.0"
                         className="form-input"
                       />
                     </div>

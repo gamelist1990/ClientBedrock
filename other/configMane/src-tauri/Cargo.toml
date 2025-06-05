@@ -1,6 +1,6 @@
 [package]
 name = "pexconfig-manager"
-version = "1.0.0"
+version = "1.1.0"
 description = "PEXtoolにインストールされているものを表示します Tauriアプリ実験版"
 authors = ["Koukunn_"]
 edition = "2024"
@@ -24,6 +24,8 @@ zip = "0.6"
 reqwest = { version = "0.11", features = ["stream"] }
 image = { version = "0.24", features = ["png", "jpeg"] }
 base64 = "0.21"
+obfstr = "0.4"           # コンパイル時文字列難読化
+litcrypt = "0.4"         # 文字列暗号化マクロ
 
 
 [target.x86_64-pc-windows-gnu]
@@ -38,3 +40,18 @@ strip = "symbols"        # シンボル情報を削除
 debug = false            # デバッグ情報を完全に無効化
 incremental = false      # インクリメンタルコンパイルを無効化（サイズ優先）
 overflow-checks = false  # オーバーフローチェックを無効化（パフォーマンス優先）
+
+# 暗号化・難読化関連の追加設定
+rpath = false
+debug-assertions = false
+split-debuginfo = "off"
+
+# 追加の最適化設定
+[profile.release.build-override]
+opt-level = "z"
+codegen-units = 1
+
+# 依存関係の最適化
+[profile.release.package."*"]
+opt-level = "z"
+strip = "symbols"

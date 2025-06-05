@@ -8,5 +8,11 @@ cargo clean
 rem リリースビルド実行
 npm run tauri build
 
+if %errorlevel% neq 0 (
+    echo Build failed!
+    pause
+    exit /b %errorlevel%
+)
+
 echo Build complete!
 pause

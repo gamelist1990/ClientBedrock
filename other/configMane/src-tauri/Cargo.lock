@@ -2255,6 +2255,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
 
 [[package]]
+name = "litcrypt"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f59c980a4d113c6e9ff015837ce1e387bd7dc220f5586887a3fc8d6f237c5616"
+dependencies = [
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "litemap"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2472,6 +2484,12 @@ dependencies = [
  "quote",
  "syn 2.0.101",
 ]
+
+[[package]]
+name = "obfstr"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0d354e9a302760d07e025701d40534f17dd1fe4c4db955b4e3bd2907c63bdee"
 
 [[package]]
 name = "objc-sys"
@@ -2865,11 +2883,13 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "pexconfig-manager"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "base64 0.21.7",
  "chrono",
  "image",
+ "litcrypt",
+ "obfstr",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
