@@ -51,6 +51,10 @@ english.WizardReady=Ready to Install
 english.WizardReadyTitle=Ready to Install
 english.WizardReadyLabel=Setup is now ready to begin [name] {#MyAppName}.
 
+[CustomMessages]
+japanese.DeleteConfigData=設定データとバックアップファイルも削除しますか？%n%n注意：このオプションを選択すると、ドキュメントフォルダ内の PEXData\ConfigManager フォルダが完全に削除されます。
+english.DeleteConfigData=Do you want to delete configuration data and backup files?%n%nWarning: Selecting this option will completely delete the PEXData\ConfigManager folder in your Documents folder.
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
@@ -61,7 +65,6 @@ Source: "..\..\other\configMane\src-tauri\target\release\WebView2Loader.dll"; De
 Source: "..\..\other\configMane\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
 Source: "..\..\other\configMane\pex.txt"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
 Source: "..\lib\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion replacesameversion
-Source: "SetShortcutRunAsAdmin.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 ; ___
 
@@ -71,9 +74,21 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\\SetShortcutRunAsAdmin.ps1"" -Shortcut ""{group}\\{#MyAppName}.lnk"""; Flags: runhidden runascurrentuser
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\\SetShortcutRunAsAdmin.ps1"" -Shortcut ""{commondesktop}\\{#MyAppName}.lnk"""; Flags: runhidden runascurrentuser
-
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+
+[Code]
+function InitializeUninstall(): Boolean;
+var
+  ResultCode: Integer;
+  ConfigPath: String;
+begin
+  Result := True;  if MsgBox(CustomMessage('DeleteConfigData'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+  begin
+    ConfigPath := ExpandConstant('{%USERPROFILE}') + '\Documents\PEXData\ConfigManager';
+    if DirExists(ConfigPath) then
+      DelTree(ConfigPath, True, True, True);
+  end;
+end;

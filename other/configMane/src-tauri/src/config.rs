@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::command;
 use zip::write::FileOptions;
 use base64::{Engine as _, engine::general_purpose};
@@ -133,6 +133,60 @@ fn get_minecraft_config_base() -> String {
     }
 }
 
+// バックアップディレクトリを取得する関数（ドキュメントフォルダ/PEXData/ConfigManager/Backups）
+fn get_backup_directory() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // ドキュメントフォルダを取得
+    let documents_dir = if let Ok(user_profile) = env::var("USERPROFILE") {
+        PathBuf::from(user_profile).join("Documents")
+    } else {
+        return Err("ユーザープロファイルが見つかりません".into());
+    };
+
+    // PEXDataフォルダの存在確認とConfigManagerフォルダの作成
+    let pex_data_dir = documents_dir.join("PEXData");
+    let config_manager_dir = pex_data_dir.join("ConfigManager");
+    let backup_dir = config_manager_dir.join("Backups");
+
+    // PEXDataフォルダが存在しない場合は作成
+    if !pex_data_dir.exists() {
+        fs::create_dir_all(&pex_data_dir)?;
+    }
+
+    // ConfigManagerフォルダが存在しない場合は作成
+    if !config_manager_dir.exists() {
+        fs::create_dir_all(&config_manager_dir)?;
+    }
+
+    // Backupsフォルダが存在しない場合は作成
+    if !backup_dir.exists() {
+        fs::create_dir_all(&backup_dir)?;
+    }
+
+    Ok(backup_dir)
+}
+
+// アイコン設定ファイルのパスを取得する関数（ドキュメントフォルダ/PEXData/ConfigManager）
+fn get_icon_settings_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let documents_dir = if let Ok(user_profile) = env::var("USERPROFILE") {
+        PathBuf::from(user_profile).join("Documents")
+    } else {
+        return Err("ユーザープロファイルが見つかりません".into());
+    };
+
+    let pex_data_dir = documents_dir.join("PEXData");
+    let config_manager_dir = pex_data_dir.join("ConfigManager");
+
+    // フォルダが存在しない場合は作成
+    if !pex_data_dir.exists() {
+        fs::create_dir_all(&pex_data_dir)?;
+    }
+    if !config_manager_dir.exists() {
+        fs::create_dir_all(&config_manager_dir)?;
+    }
+
+    Ok(config_manager_dir.join("icon_settings.json"))
+}
+
 fn get_mod_config_paths() -> HashMap<String, (String, Option<String>)> {
     let mut mod_paths = HashMap::new();
     
@@ -149,7 +203,7 @@ fn get_mod_config_paths() -> HashMap<String, (String, Option<String>)> {
         "LatiteRecode".to_string(),
         ("LatiteRecode\\Configs".to_string(), Some("https://latite.net/sources/latite.webp".to_string()))
     );
-    // 他のMODも追加可能
+    // 他のMODも追加
     
     mod_paths
 }
@@ -297,15 +351,20 @@ pub async fn backup_mod_config(
             backup_path: None,
             error: Some("指定されたMODのconfigが見つかりません".to_string()),
         };
-    }
-
-    // バックアップファイル名を生成
+    }    // バックアップファイル名を生成
     let backup_filename = format!("{}.pexPack", backup_name);
-    let backup_path = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join(&backup_filename);    // バックアップ情報を作成
+    
+    // 新しいバックアップディレクトリを取得
+    let backup_dir = match get_backup_directory() {
+        Ok(dir) => dir,
+        Err(e) => return BackupResult {
+            success: false,
+            backup_path: None,
+            error: Some(format!("バックアップディレクトリの作成に失敗しました: {}", e)),
+        },
+    };
+    
+    let backup_path = backup_dir.join(&backup_filename);// バックアップ情報を作成
     let backup_info = BackupInfo {
         name: backup_name.clone(),
         version,
@@ -398,18 +457,21 @@ fn add_dir_to_zip<W: Write + std::io::Seek>(
 #[command]
 pub async fn import_config_backup(backup_path: String, target_mod_name: String) -> ImportResult {
     // バックアップファイルのフルパスを生成
-    let exe_dir = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
+    let backup_dir = match get_backup_directory() {
+        Ok(dir) => dir,
+        Err(e) => return ImportResult {
+            success: false,
+            imported_configs: vec![],
+            error: Some(format!("バックアップディレクトリの取得に失敗しました: {}", e)),
+        },
+    };
     
     let full_backup_path = if Path::new(&backup_path).is_absolute() {
         // 既に絶対パスの場合はそのまま使用
         Path::new(&backup_path).to_path_buf()
     } else {
-        // 相対パスの場合は実行ファイルのディレクトリと結合
-        exe_dir.join(&backup_path)
+        // 相対パスの場合はバックアップディレクトリと結合
+        backup_dir.join(&backup_path)
     };
     
     if !full_backup_path.exists() {
@@ -517,15 +579,18 @@ pub struct BackupFileInfo {
 
 #[command]
 pub async fn list_backup_files() -> Vec<BackupFileInfo> {
-    let exe_dir = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
-
     let mut backups = Vec::new();
     
-    if let Ok(entries) = fs::read_dir(&exe_dir) {
+    // 新しいバックアップディレクトリを取得
+    let backup_dir = match get_backup_directory() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("バックアップディレクトリの取得に失敗しました: {}", e);
+            return backups;
+        }
+    };
+    
+    if let Ok(entries) = fs::read_dir(&backup_dir) {
         for entry in entries.flatten() {
             if let Some(file_name) = entry.file_name().to_str() {
                 if file_name.ends_with(".pexPack") {
@@ -591,13 +656,16 @@ async fn copy_file_safely(source: &Path, target: &Path) -> Result<(), Box<dyn st
 // 共有機能: バックアップファイルを任意の場所にコピー
 #[command]
 pub async fn share_config_backup(backup_filename: String, target_path: String) -> ShareResult {
-    let exe_dir = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
+    let backup_dir = match get_backup_directory() {
+        Ok(dir) => dir,
+        Err(e) => return ShareResult {
+            success: false,
+            shared_path: None,
+            error: Some(format!("バックアップディレクトリの取得に失敗しました: {}", e)),
+        },
+    };
     
-    let source_path = exe_dir.join(&backup_filename);
+    let source_path = backup_dir.join(&backup_filename);
     let target_path = Path::new(&target_path);
     
     if !source_path.exists() {
@@ -629,13 +697,8 @@ pub async fn share_config_backup(backup_filename: String, target_path: String) -
 
 // バックアップファイルの共有フラグを更新
 async fn update_backup_shared_flag(backup_filename: &str, shared: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let exe_dir = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
-    
-    let backup_path = exe_dir.join(backup_filename);
+    let backup_dir = get_backup_directory()?;
+    let backup_path = backup_dir.join(backup_filename);
     
     if !backup_path.exists() {
         return Err("バックアップファイルが見つかりません".into());
@@ -1061,24 +1124,22 @@ impl Default for ModIconSettings {
     }
 }
 
-// アイコン設定ファイルのパス
-fn get_icon_settings_path() -> std::path::PathBuf {
-    std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("mod_icons.json")
-}
+// アイコン設定ファイルのパス（新しい場所に移動済み）
 
 // アイコン設定を読み込み
 fn load_icon_settings() -> ModIconSettings {
-    let settings_path = get_icon_settings_path();
-    
-    if settings_path.exists() {
-        if let Ok(contents) = fs::read_to_string(&settings_path) {
-            if let Ok(settings) = serde_json::from_str::<ModIconSettings>(&contents) {
-                return settings;
+    match get_icon_settings_path() {
+        Ok(settings_path) => {
+            if settings_path.exists() {
+                if let Ok(contents) = fs::read_to_string(&settings_path) {
+                    if let Ok(settings) = serde_json::from_str::<ModIconSettings>(&contents) {
+                        return settings;
+                    }
+                }
             }
+        }
+        Err(_) => {
+            eprintln!("アイコン設定ファイルのパス取得に失敗しました");
         }
     }
     
@@ -1087,7 +1148,7 @@ fn load_icon_settings() -> ModIconSettings {
 
 // アイコン設定を保存
 fn save_icon_settings(settings: &ModIconSettings) -> Result<(), Box<dyn std::error::Error>> {
-    let settings_path = get_icon_settings_path();
+    let settings_path = get_icon_settings_path()?;
     let contents = serde_json::to_string_pretty(settings)?;
     fs::write(&settings_path, contents)?;
     Ok(())
